@@ -1,0 +1,829 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考勤管理系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+    * { font-family: 'Noto Sans SC', sans-serif; }
+    
+    body { background-color: #f0f2f5; }
+    
+    .nav-gradient { background: linear-gradient(90deg, #1a4dff 0%, #2c5eff 100%); }
+    
+    .sidebar-item-active {
+      background: rgba(44, 94, 255, 0.08);
+      border-left: 4px solid #2C5EFF;
+    }
+    
+    .kpi-card { 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-top: 3px solid;
+    }
+    
+    .tab-active { 
+      color: #2C5EFF; 
+      border-bottom: 3px solid #2C5EFF; 
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 0.7; }
+      50% { opacity: 1; }
+      100% { opacity: 0.7; }
+    }
+    
+    .pulse-alert { animation: pulse 1.5s infinite; }
+
+    .status-normal { background: #4CAF50; }
+    .status-warning { background: #FFC107; }
+    .status-critical { background: #F44336; }
+    
+    .content-area {
+      max-height: calc(100vh - 160px);
+      overflow-y: auto;
+    }
+    
+    .api-indicator {
+      border-top: 1px solid #EEE;
+      height: 36px;
+      background: #F9FAFC;
+    }
+    
+    .page-content { display: none; }
+    .page-content.active { display: block; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-weight: 500; margin-bottom: 4px; color: #374151; }
+    .form-input { 
+      width: 100%; 
+      padding: 8px 12px; 
+      border: 1px solid #d1d5db; 
+      border-radius: 6px; 
+      font-size: 14px;
+      background: white;
+    }
+    .form-input:focus { outline: none; border-color: #2C5EFF; box-shadow: 0 0 0 3px rgba(44, 94, 255, 0.1); }
+    
+    .btn-primary { 
+      background: #2C5EFF; 
+      color: white; 
+      padding: 8px 16px; 
+      border: none; 
+      border-radius: 6px; 
+      font-size: 14px; 
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-primary:hover { background: #1a4dff; }
+    
+    .btn-secondary { 
+      background: white; 
+      color: #374151; 
+      padding: 8px 16px; 
+      border: 1px solid #d1d5db; 
+      border-radius: 6px; 
+      font-size: 14px; 
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-secondary:hover { background: #f9fafb; }
+    
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      width: 500px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #c5c9d2; border-radius: 3px; }
+  </style>
+</head>
+<body class="overflow-x-hidden flex justify-center bg-gray-50">
+  <div class="w-[1440px] min-h-screen flex flex-col">
+    <!-- 顶部导航区 -->
+    <header class="nav-gradient h-16 flex items-center justify-between px-6 text-white">
+      <div class="flex items-center">
+        <iconify-icon icon="mdi:calendar-check" class="text-2xl mr-2"></iconify-icon>
+        <h1 class="text-xl font-semibold">考勤管理系统</h1>
+      </div>
+      
+      <div class="flex items-center space-x-6">
+        <div class="relative cursor-pointer">
+          <iconify-icon icon="mdi:bell-outline" class="text-xl"></iconify-icon>
+          <span class="absolute -top-1 -right-1 h-3 w-3 pulse-alert">
+            <span class="absolute h-3 w-3 rounded-full bg-[#FF6B6B] animate-ping"></span>
+            <span class="absolute h-3 w-3 rounded-full bg-[#FF6B6B]"></span>
+          </span>
+        </div>
+        
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center bg-white text-blue-600 font-semibold mr-2">张</div>
+          <div>
+            <p class="text-sm font-medium">张三</p>
+            <p class="text-xs opacity-80">人力资源部</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+      <!-- 左侧功能区 -->
+      <aside class="w-64 bg-white flex-shrink-0 flex flex-col">
+        <div class="py-4 px-2 space-y-1 flex-1 overflow-y-auto">
+          <div id="nav-dashboard" class="sidebar-item-active py-3 px-4 rounded flex items-center text-blue-600 cursor-pointer nav-item" onclick="showPage('dashboard')">
+            <iconify-icon icon="mdi:view-dashboard" class="text-xl mr-3"></iconify-icon>
+            <span class="font-medium">数据看板</span>
+          </div>
+          
+          <div id="nav-employee" class="py-3 px-4 rounded flex items-center text-gray-600 hover:bg-gray-100 cursor-pointer nav-item" onclick="showPage('employee')">
+            <iconify-icon icon="mdi:account-group" class="text-xl mr-3"></iconify-icon>
+            <span class="font-medium">人员管理</span>
+          </div>
+          
+          <div id="nav-attendance" class="py-3 px-4 rounded flex items-center text-gray-600 hover:bg-gray-100 cursor-pointer nav-item" onclick="showPage('attendance')">
+            <iconify-icon icon="mdi:clock-outline" class="text-xl mr-3"></iconify-icon>
+            <span class="font-medium">考勤记录</span>
+          </div>
+          
+          <div id="nav-schedule" class="py-3 px-4 rounded flex items-center text-gray-600 hover:bg-gray-100 cursor-pointer nav-item" onclick="showPage('schedule')">
+            <iconify-icon icon="mdi:calendar-blank" class="text-xl mr-3"></iconify-icon>
+            <span class="font-medium">排班管理</span>
+          </div>
+          
+          <div id="nav-report" class="py-3 px-4 rounded flex items-center text-gray-600 hover:bg-gray-100 cursor-pointer nav-item" onclick="showPage('report')">
+            <iconify-icon icon="mdi:chart-line" class="text-xl mr-3"></iconify-icon>
+            <span class="font-medium">报表统计</span>
+          </div>
+          
+          <div id="nav-exception" class="py-3 px-4 rounded flex items-center text-gray-600 hover:bg-gray-100 cursor-pointer nav-item" onclick="showPage('exception')">
+            <iconify-icon icon="mdi:alert-circle-outline" class="text-xl mr-3"></iconify-icon>
+            <span class="font-medium">异常设定</span>
+          </div>
+          
+          <div id="nav-system" class="py-3 px-4 rounded flex items-center text-gray-600 hover:bg-gray-100 cursor-pointer nav-item" onclick="showPage('system')">
+            <iconify-icon icon="mdi:cog-outline" class="text-xl mr-3"></iconify-icon>
+            <span class="font-medium">系统配置</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 主内容区 -->
+      <main class="flex-1 bg-[#F5F7FA] p-6">
+        <!-- 数据看板页面 -->
+        <div id="page-dashboard" class="page-content active">
+          <div class="bg-white rounded shadow-sm">
+            <div class="border-b p-6">
+              <h2 class="text-xl font-semibold">数据看板</h2>
+            </div>
+            <div class="content-area p-6">
+            <div class="mb-6">
+              <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold">今日考勤概览</h2>
+                <div class="flex space-x-3">
+                  <div class="flex items-center border border-gray-300 rounded px-3 py-1">
+                    <span class="text-gray-500 mr-2">部门</span>
+                    <select class="bg-transparent focus:outline-none">
+                      <option>全部部门</option>
+                      <option>技术部</option>
+                      <option>市场部</option>
+                    </select>
+                  </div>
+                  <div class="flex items-center border border-gray-300 rounded px-3 py-1">
+                    <span class="text-gray-500 mr-2">日期</span>
+                    <input type="date" class="bg-transparent focus:outline-none" value="2025-08-14">
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- KPI卡片区域 -->
+            <div class="grid grid-cols-4 gap-5 mb-8">
+              <div class="kpi-card bg-white rounded-sm pt-4 relative overflow-hidden" style="border-top-color:#4CAF50;">
+                <div class="px-4 pb-2">
+                  <p class="text-gray-500 text-sm mb-2">今日出勤率</p>
+                  <div class="flex justify-between items-end">
+                    <span class="text-2xl font-bold text-gray-800">96.4%</span>
+                    <iconify-icon icon="mdi:trending-up" class="text-green-500 text-2xl"></iconify-icon>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="kpi-card bg-white rounded-sm pt-4 relative overflow-hidden" style="border-top-color:#FF6B6B;">
+                <div class="px-4 pb-2">
+                  <p class="text-gray-500 text-sm mb-2">异常预警</p>
+                  <div class="flex justify-between items-end">
+                    <span class="text-2xl font-bold text-gray-800">12例</span>
+                    <iconify-icon icon="mdi:alert-circle" class="text-red-500 text-2xl"></iconify-icon>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="kpi-card bg-white rounded-sm pt-4 relative overflow-hidden" style="border-top-color:#2C5EFF;">
+                <div class="px-4 pb-2">
+                  <p class="text-gray-500 text-sm mb-2">在岗人数</p>
+                  <div class="flex justify-between items-end">
+                    <span class="text-2xl font-bold text-gray-800">248</span>
+                    <iconify-icon icon="mdi:account-group" class="text-blue-500 text-2xl"></iconify-icon>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="kpi-card bg-white rounded-sm pt-4 relative overflow-hidden" style="border-top-color:#FFC107;">
+                <div class="px-4 pb-2">
+                  <p class="text-gray-500 text-sm mb-2">迟到早退</p>
+                  <div class="flex justify-between items-end">
+                    <span class="text-2xl font-bold text-gray-800">8例</span>
+                    <iconify-icon icon="mdi:clock-alert" class="text-yellow-500 text-2xl"></iconify-icon>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 考勤状态图表 -->
+            <div class="grid grid-cols-2 gap-5 mb-8">
+              <div class="bg-white rounded shadow-sm p-4">
+                <h3 class="font-semibold mb-4">部门出勤率统计</h3>
+                <div id="attendanceChart" style="height:280px;"></div>
+              </div>
+              <div class="bg-white rounded shadow-sm p-4">
+                <h3 class="font-semibold mb-4">异常类型分布</h3>
+                <div id="exceptionChart" style="height:280px;"></div>
+              </div>
+            </div>
+            
+            <!-- 异常记录表格 -->
+            <div class="bg-white rounded shadow-sm p-4">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="font-semibold">今日异常记录</h3>
+                <button class="bg-[#2C5EFF] hover:bg-blue-600 text-white px-4 py-1.5 rounded text-sm">
+                  导出报表
+                </button>
+              </div>
+              
+              <div class="overflow-x-auto">
+                <table class="min-w-full">
+                  <thead>
+                    <tr class="bg-gray-100 text-gray-600 text-sm">
+                      <th class="py-3 px-4 text-left">姓名</th>
+                      <th class="py-3 px-4 text-left">工号</th>
+                      <th class="py-3 px-4 text-left">部门</th>
+                      <th class="py-3 px-4 text-left">异常类型</th>
+                      <th class="py-3 px-4 text-left">时间</th>
+                      <th class="py-3 px-4 text-left">状态</th>
+                      <th class="py-3 px-4 text-left">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200 text-sm">
+                    <tr class="hover:bg-gray-50">
+                      <td class="py-3 px-4">张三</td>
+                      <td class="py-3 px-4">EMP20231876</td>
+                      <td class="py-3 px-4">技术部</td>
+                      <td class="py-3 px-4 text-red-600 font-medium">迟到</td>
+                      <td class="py-3 px-4">08:52 AM</td>
+                      <td><span class="inline-block w-3 h-3 rounded-full status-critical mr-1"></span> 未处理</td>
+                      <td class="py-3 px-4 text-blue-600 font-medium cursor-pointer">标记处理</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                      <td class="py-3 px-4">李四</td>
+                      <td class="py-3 px-4">EMP20231209</td>
+                      <td class="py-3 px-4">市场部</td>
+                      <td class="py-3 px-4 text-red-600 font-medium">缺卡</td>
+                      <td class="py-3 px-4">09:15 AM</td>
+                      <td><span class="inline-block w-3 h-3 rounded-full status-critical mr-1"></span> 未处理</td>
+                      <td class="py-3 px-4 text-blue-600 font-medium cursor-pointer">标记处理</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                      <td class="py-3 px-4">王五</td>
+                      <td class="py-3 px-4">EMP20229893</td>
+                      <td class="py-3 px-4">技术部</td>
+                      <td class="py-3 px-4 text-orange-500 font-medium">早退</td>
+                      <td class="py-3 px-4">昨日 17:20 PM</td>
+                      <td><span class="inline-block w-3 h-3 rounded-full status-warning mr-1"></span> 处理中</td>
+                      <td class="py-3 px-4 text-blue-600 font-medium cursor-pointer">查看详情</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                      <td class="py-3 px-4">赵六</td>
+                      <td class="py-3 px-4">EMP20231024</td>
+                      <td class="py-3 px-4">行政部</td>
+                      <td class="py-3 px-4 text-red-600 font-medium">缺勤</td>
+                      <td class="py-3 px-4">今天</td>
+                      <td><span class="inline-block w-3 h-3 rounded-full status-critical mr-1"></span> 未处理</td>
+                      <td class="py-3 px-4 text-blue-600 font-medium cursor-pointer">标记处理</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                      <td class="py-3 px-4">钱一</td>
+                      <td class="py-3 px-4">EMP20232987</td>
+                      <td class="py-3 px-4">产品部</td>
+                      <td class="py-3 px-4 text-orange-500 font-medium">位置异常</td>
+                      <td class="py-3 px-4">10:20 AM</td>
+                      <td><span class="inline-block w-3 h-3 rounded-full status-warning mr-1"></span> 处理中</td>
+                      <td class="py-3 px-4 text-blue-600 font-medium cursor-pointer">查看详情</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 人员管理页面 -->
+        <div id="page-employee" class="page-content">
+          <div class="bg-white rounded shadow-sm">
+            <div class="border-b p-6 flex justify-between items-center">
+              <h2 class="text-xl font-semibold">人员管理</h2>
+              <div class="space-x-2">
+                <button class="btn-secondary" onclick="openModal('importEmployee')">批量导入</button>
+                <button class="btn-primary" onclick="openModal('addEmployee')">新增员工</button>
+              </div>
+            </div>
+            <div class="p-6">
+              <div class="grid grid-cols-4 gap-4 mb-4">
+                <input class="form-input" placeholder="姓名/工号/部门 搜索..." />
+                <select class="form-input"><option>全部部门</option><option>技术部</option><option>市场部</option></select>
+                <select class="form-input"><option>状态：全部</option><option>在职</option><option>离职</option></select>
+                <button class="btn-primary">查询</button>
+              </div>
+              <div class="overflow-x-auto bg-white rounded border">
+                <table class="min-w-full">
+                  <thead>
+                    <tr class="bg-gray-100 text-gray-600 text-sm">
+                      <th class="py-3 px-4 text-left">姓名</th>
+                      <th class="py-3 px-4 text-left">工号</th>
+                      <th class="py-3 px-4 text-left">部门</th>
+                      <th class="py-3 px-4 text-left">职位</th>
+                      <th class="py-3 px-4 text-left">联系方式</th>
+                      <th class="py-3 px-4 text-left">入职日期</th>
+                      <th class="py-3 px-4 text-left">状态</th>
+                      <th class="py-3 px-4 text-left">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200 text-sm">
+                    <tr class="hover:bg-gray-50">
+                      <td class="py-3 px-4">张三</td>
+                      <td class="py-3 px-4">EMP20230001</td>
+                      <td class="py-3 px-4">技术部</td>
+                      <td class="py-3 px-4">前端工程师</td>
+                      <td class="py-3 px-4">138****0001</td>
+                      <td class="py-3 px-4">2023-06-01</td>
+                      <td class="py-3 px-4"><span class="text-green-600">在职</span></td>
+                      <td class="py-3 px-4 text-blue-600">编辑 | 删除</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                      <td class="py-3 px-4">李四</td>
+                      <td class="py-3 px-4">EMP20230002</td>
+                      <td class="py-3 px-4">市场部</td>
+                      <td class="py-3 px-4">营销专员</td>
+                      <td class="py-3 px-4">138****0002</td>
+                      <td class="py-3 px-4">2024-02-18</td>
+                      <td class="py-3 px-4"><span class="text-gray-500">离职</span></td>
+                      <td class="py-3 px-4 text-blue-600">编辑 | 删除</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 考勤记录页面 -->
+        <div id="page-attendance" class="page-content">
+          <div class="bg-white rounded shadow-sm">
+            <div class="border-b p-6 flex justify-between items-center">
+              <h2 class="text-xl font-semibold">考勤记录</h2>
+              <div class="space-x-2">
+                <button class="btn-secondary">导出数据</button>
+                <button class="btn-primary" onclick="openModal('addRecord')">手动补录</button>
+              </div>
+            </div>
+            <div class="p-6">
+              <div class="grid grid-cols-5 gap-4 mb-4">
+                <input class="form-input" placeholder="姓名/工号 搜索..." />
+                <select class="form-input"><option>全部部门</option><option>技术部</option><option>市场部</option></select>
+                <input type="date" class="form-input" />
+                <input type="date" class="form-input" />
+                <select class="form-input"><option>打卡类型：全部</option><option>上班</option><option>下班</option><option>加班</option></select>
+              </div>
+              <div class="overflow-x-auto bg-white rounded border">
+                <table class="min-w-full">
+                  <thead>
+                    <tr class="bg-gray-100 text-gray-600 text-sm">
+                      <th class="py-3 px-4 text-left">姓名</th>
+                      <th class="py-3 px-4 text-left">工号</th>
+                      <th class="py-3 px-4 text-left">打卡时间</th>
+                      <th class="py-3 px-4 text-left">打卡类型</th>
+                      <th class="py-3 px-4 text-left">设备ID</th>
+                      <th class="py-3 px-4 text-left">地点</th>
+                      <th class="py-3 px-4 text-left">状态</th>
+                      <th class="py-3 px-4 text-left">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200 text-sm">
+                    <tr class="hover:bg-gray-50">
+                      <td class="py-3 px-4">张三</td>
+                      <td class="py-3 px-4">EMP20230001</td>
+                      <td class="py-3 px-4">2025-08-14 08:56</td>
+                      <td class="py-3 px-4">上班</td>
+                      <td class="py-3 px-4">DEV-001</td>
+                      <td class="py-3 px-4">总部闸机</td>
+                      <td class="py-3 px-4"><span class="text-green-600">正常</span></td>
+                      <td class="py-3 px-4 text-blue-600">修正</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                      <td class="py-3 px-4">李四</td>
+                      <td class="py-3 px-4">EMP20230002</td>
+                      <td class="py-3 px-4">2025-08-14 09:12</td>
+                      <td class="py-3 px-4">上班</td>
+                      <td class="py-3 px-4">DEV-003</td>
+                      <td class="py-3 px-4">分部A</td>
+                      <td class="py-3 px-4"><span class="text-red-600">缺卡</span></td>
+                      <td class="py-3 px-4 text-blue-600">补录</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 排班管理页面 -->
+        <div id="page-schedule" class="page-content">
+          <div class="bg-white rounded shadow-sm">
+            <div class="border-b p-6 flex justify-between items-center">
+              <h2 class="text-xl font-semibold">排班管理</h2>
+              <div class="space-x-2">
+                <button class="btn-secondary">班次类型</button>
+                <button class="btn-secondary">排班模板</button>
+                <button class="btn-primary">新建排班</button>
+              </div>
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-4 mb-4">
+                <select class="form-input w-48"><option>全部部门</option><option>技术部</option><option>市场部</option></select>
+                <input type="month" class="form-input w-48" />
+                <button class="btn-primary">查询</button>
+              </div>
+              <div class="bg-white rounded border p-4">
+                <div class="grid grid-cols-7 gap-2 text-sm">
+                  <div class="p-2 bg-gray-50 rounded">周一<br/><span class="text-blue-600">早班</span></div>
+                  <div class="p-2 bg-gray-50 rounded">周二<br/><span class="text-blue-600">中班</span></div>
+                  <div class="p-2 bg-gray-50 rounded">周三<br/><span class="text-blue-600">晚班</span></div>
+                  <div class="p-2 bg-gray-50 rounded">周四<br/><span class="text-blue-600">早班</span></div>
+                  <div class="p-2 bg-gray-50 rounded">周五<br/><span class="text-blue-600">早班</span></div>
+                  <div class="p-2 bg-gray-50 rounded">周六<br/><span class="text-yellow-600">休</span></div>
+                  <div class="p-2 bg-gray-50 rounded">周日<br/><span class="text-yellow-600">休</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 报表统计页面 -->
+        <div id="page-report" class="page-content">
+          <div class="bg-white rounded shadow-sm">
+            <div class="border-b p-6 flex justify-between items-center">
+              <h2 class="text-xl font-semibold">报表统计</h2>
+              <div class="space-x-2">
+                <button class="btn-secondary">导出Excel</button>
+                <button class="btn-secondary">导出PDF</button>
+              </div>
+            </div>
+            <div class="p-6">
+              <div class="grid grid-cols-3 gap-4 mb-4">
+                <select class="form-input"><option>报表类型：考勤统计</option><option>工时统计</option><option>加班统计</option><option>异常统计</option></select>
+                <input type="date" class="form-input" />
+                <input type="date" class="form-input" />
+              </div>
+              <div class="grid grid-cols-2 gap-5 mb-6">
+                <div class="bg-white rounded shadow-sm p-4">
+                  <h3 class="font-semibold mb-4">出勤趋势</h3>
+                  <div id="reportChart1" style="height:280px;"></div>
+                </div>
+                <div class="bg-white rounded shadow-sm p-4">
+                  <h3 class="font-semibold mb-4">异常趋势</h3>
+                  <div id="reportChart2" style="height:280px;"></div>
+                </div>
+              </div>
+              <div class="overflow-x-auto bg-white rounded border">
+                <table class="min-w-full">
+                  <thead>
+                    <tr class="bg-gray-100 text-gray-600 text-sm">
+                      <th class="py-3 px-4 text-left">指标</th>
+                      <th class="py-3 px-4 text-left">本期</th>
+                      <th class="py-3 px-4 text-left">上期</th>
+                      <th class="py-3 px-4 text-left">环比</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200 text-sm">
+                    <tr>
+                      <td class="py-3 px-4">出勤率</td>
+                      <td class="py-3 px-4">96.4%</td>
+                      <td class="py-3 px-4">95.1%</td>
+                      <td class="py-3 px-4 text-green-600">+1.3%</td>
+                    </tr>
+                    <tr>
+                      <td class="py-3 px-4">迟到早退</td>
+                      <td class="py-3 px-4">8</td>
+                      <td class="py-3 px-4">10</td>
+                      <td class="py-3 px-4 text-green-600">-20%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 异常设定页面 -->
+        <div id="page-exception" class="page-content">
+          <div class="bg-white rounded shadow-sm">
+            <div class="border-b p-6 flex justify-between items-center">
+              <h2 class="text-xl font-semibold">异常设定</h2>
+              <div class="space-x-2">
+                <button class="btn-primary">保存设置</button>
+              </div>
+            </div>
+            <div class="p-6 grid grid-cols-2 gap-6">
+              <div>
+                <h3 class="font-semibold mb-3">考勤异常规则</h3>
+                <div class="form-group">
+                  <label class="form-label">迟到阈值(分钟)</label>
+                  <input class="form-input" type="number" value="10" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">早退阈值(分钟)</label>
+                  <input class="form-input" type="number" value="10" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">缺勤判定(分钟)</label>
+                  <input class="form-input" type="number" value="480" />
+                </div>
+              </div>
+              <div>
+                <h3 class="font-semibold mb-3">假期与加班规则</h3>
+                <div class="form-group">
+                  <label class="form-label">工作日加班倍率</label>
+                  <select class="form-input"><option>1.5x</option><option>2x</option></select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">周末加班倍率</label>
+                  <select class="form-input"><option>2x</option><option>2.5x</option></select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">节假日加班倍率</label>
+                  <select class="form-input"><option>3x</option><option>3.5x</option></select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 系统配置页面 -->
+        <div id="page-system" class="page-content">
+          <div class="bg-white rounded shadow-sm">
+            <div class="border-b p-6 flex justify-between items-center">
+              <h2 class="text-xl font-semibold">系统配置</h2>
+              <div class="space-x-2">
+                <button class="btn-primary">保存</button>
+              </div>
+            </div>
+            <div class="p-6 grid grid-cols-2 gap-6">
+              <div>
+                <h3 class="font-semibold mb-3">API设置</h3>
+                <div class="form-group">
+                  <label class="form-label">后端API地址</label>
+                  <input class="form-input" placeholder="http://localhost:8000" value="http://localhost:8000" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">API密钥</label>
+                  <input class="form-input" type="password" placeholder="******" value="" />
+                </div>
+              </div>
+              <div>
+                <h3 class="font-semibold mb-3">通知设置</h3>
+                <div class="form-group">
+                  <label class="form-label">通知渠道</label>
+                  <select class="form-input"><option>站内信</option><option>邮件</option><option>短信</option><option>企业微信</option></select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">每日汇总时间</label>
+                  <input class="form-input" type="time" value="18:00" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    
+    <!-- API对接提示 -->
+    <div class="api-indicator flex items-center px-6 text-sm">
+      <span class="w-3 h-3 rounded-full bg-green-500 mr-2"></span>
+      <span>API 连接正常 • 最后同步: 2025-08-14 14:28:36</span>
+    </div>
+  </div>
+
+  <!-- 模态框 -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-content">
+      <div id="modal-body">
+        <!-- 新增员工模态框 -->
+        <div id="addEmployee-modal" class="modal-form">
+          <h3 class="text-lg font-semibold mb-4">新增员工</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="form-group">
+              <label class="form-label">姓名</label>
+              <input class="form-input" placeholder="请输入姓名" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">工号</label>
+              <input class="form-input" placeholder="自动生成或手动输入" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">部门</label>
+              <select class="form-input"><option>技术部</option><option>市场部</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">职位</label>
+              <input class="form-input" placeholder="请输入职位" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">联系方式</label>
+              <input class="form-input" placeholder="请输入手机号" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">入职日期</label>
+              <input class="form-input" type="date" />
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-6">
+            <button class="btn-secondary" onclick="closeModal()">取消</button>
+            <button class="btn-primary">确认添加</button>
+          </div>
+        </div>
+        
+        <!-- 手动补录模态框 -->
+        <div id="addRecord-modal" class="modal-form">
+          <h3 class="text-lg font-semibold mb-4">手动补录</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="form-group">
+              <label class="form-label">员工</label>
+              <select class="form-input"><option>张三 - EMP20230001</option><option>李四 - EMP20230002</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">打卡类型</label>
+              <select class="form-input"><option>上班</option><option>下班</option><option>加班</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">打卡时间</label>
+              <input class="form-input" type="datetime-local" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">地点</label>
+              <input class="form-input" placeholder="打卡地点" />
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-6">
+            <button class="btn-secondary" onclick="closeModal()">取消</button>
+            <button class="btn-primary">确认补录</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 页面切换功能
+    function showPage(pageId) {
+      // 标准化页面ID，支持传入 'dashboard' 或 'page-dashboard'
+      const normalizedId = pageId.startsWith('page-') ? pageId : `page-${pageId}`;
+
+      // 隐藏所有页面
+      const pages = document.querySelectorAll('.page-content');
+      pages.forEach(page => page.classList.remove('active'));
+      
+      // 显示目标页面
+      const targetPage = document.getElementById(normalizedId);
+      if (targetPage) {
+        targetPage.classList.add('active');
+      }
+      
+      // 更新侧边栏选中状态
+      const navItems = document.querySelectorAll('.nav-item');
+      navItems.forEach(item => {
+        item.classList.remove('sidebar-item-active', 'text-blue-600');
+        item.classList.add('text-gray-600');
+      });
+      
+      // 设置当前选中的菜单项
+      const activeItem = document.getElementById('nav-' + normalizedId.replace('page-', ''));
+      if (activeItem) {
+        activeItem.classList.add('sidebar-item-active', 'text-blue-600');
+        activeItem.classList.remove('text-gray-600');
+      }
+    }
+
+    // 模态框功能
+    function openModal(modalId) {
+      const overlay = document.getElementById('modal-overlay');
+      const modals = document.querySelectorAll('.modal-form');
+      
+      // 隐藏所有模态框内容
+      modals.forEach(modal => modal.style.display = 'none');
+      
+      // 显示目标模态框
+      const targetModal = document.getElementById(modalId + '-modal');
+      if (targetModal) {
+        targetModal.style.display = 'block';
+        overlay.style.display = 'flex';
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').style.display = 'none';
+    }
+
+    // 点击遮罩层关闭模态框
+    document.getElementById('modal-overlay').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeModal();
+      }
+    });
+
+    // 页面初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      showPage('dashboard');
+    });
+
+    // 初始化图表
+    const attendanceChart = echarts.init(document.getElementById('attendanceChart'));
+    attendanceChart.setOption({
+      tooltip: { trigger: 'axis' },
+      grid: { left: '3%', right: '4%', bottom: '3%', top: '5%', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: ['技术部', '市场部', '行政部', '产品部', '财务部', '人力资源部']
+      },
+      yAxis: { 
+        type: 'value',
+        axisLabel: { formatter: '{value}%' }
+      },
+      series: [{
+        data: [98, 92, 95, 97, 99, 96],
+        type: 'bar',
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#3A7BFF' },
+            { offset: 1, color: '#2C5EFF' }
+          ])
+        }
+      }]
+    });
+    
+    const exceptionChart = echarts.init(document.getElementById('exceptionChart'));
+    exceptionChart.setOption({
+      tooltip: { trigger: 'item' },
+      legend: { orient: 'horizontal', bottom: 0 },
+      series: [{
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['50%', '42%'],
+        avoidLabelOverlap: false,
+        itemStyle: { borderWidth: 2, borderColor: '#fff' },
+        label: { show: false },
+        emphasis: { label: { show: true, fontSize: 14 } },
+        data: [
+          { value: 8, name: '迟到早退', itemStyle: { color: '#FFC107' } },
+          { value: 3, name: '缺卡记录', itemStyle: { color: '#FF6B6B' } },
+          { value: 1, name: '缺勤记录', itemStyle: { color: '#F44336' } },
+          { value: 2, name: '位置异常', itemStyle: { color: '#F57C00' } }
+        ]
+      }]
+    });
+    
+    // 窗口大小变化时重绘图表
+    window.addEventListener('resize', () => {
+      attendanceChart.resize();
+      exceptionChart.resize();
+    });
+  </script>
+
+</body></html>

@@ -1,0 +1,119 @@
+from sqlalchemy.orm import Session
+from sqlalchemy import func, and_, distinct
+from datetime import datetime, timedelta
+from services import employee_service
+from models.attendance_record import AttendanceRecord
+from models.employee import Employee
+
+def get_dashboard_stats(db: Session, date: str = None):
+    # 解析日期参数
+    target_date = datetime.strptime(date, '%Y-%m-%d').date() if date else datetime.now().date()
+    
+    # 基础查询条件
+    employee_query = db.query(Employee).filter(Employee.is_active == True)
+    
+    # 获取总员工数
+    total_employees = employee_query.count()
+    
+    # 获取指定日期出勤人数（去重）- 只统计有打卡记录的员工
+    present_today = db.query(distinct(AttendanceRecord.employee_id)).filter(
+        func.date(AttendanceRecord.clock_in_time) == target_date
+    )
+    present_today = present_today.count()
+    
+    # 计算出勤率
+    attendance_rate = round((present_today / total_employees * 100), 1) if total_employees > 0 else 0
+    
+    # 获取异常考勤数（指定日期迟到、早退等）
+    abnormal_query = db.query(AttendanceRecord).filter(
+        and_(
+            func.date(AttendanceRecord.clock_in_time) == target_date,
+            AttendanceRecord.status.in_(['迟到', '早退', '缺勤', '缺卡'])
+        )
+    )
+    abnormal_attendance = abnormal_query.count()
+    
+    # 待处理请求数（这里暂时设为0，实际应该查询补卡申请等）
+    pending_requests = 0
+    
+    # 获取过去7天的出勤统计
+    weekly_attendance = []
+    for i in range(7):
+        date_item = target_date - timedelta(days=6-i)
+        count_query = db.query(distinct(AttendanceRecord.employee_id)).filter(
+            func.date(AttendanceRecord.clock_in_time) == date_item
+        )
+        count = count_query.count()
+        weekly_attendance.append(count)
+    
+    return {
+        "total_employees": total_employees,
+        "present_today": present_today,
+        "attendance_rate": attendance_rate,
+        "abnormal_attendance": abnormal_attendance,
+        "pending_requests": pending_requests,
+        "weekly_attendance": weekly_attendance
+    }
+
+def get_exception_type_stats(db: Session, date: str = None):
+    """获取异常类型分布统计"""
+    target_date = datetime.strptime(date, '%Y-%m-%d').date() if date else datetime.now().date()
+    
+    # 查询各种异常类型的数量
+    exception_stats = db.query(
+        AttendanceRecord.status,
+        func.count(AttendanceRecord.record_id).label('count')
+    ).filter(
+        and_(
+            func.date(AttendanceRecord.clock_in_time) == target_date,
+            AttendanceRecord.status.in_(['迟到', '早退', '缺勤', '缺卡', '位置异常'])
+        )
+    ).group_by(AttendanceRecord.status).all()
+    
+    # 格式化返回数据
+    result = []
+    for status, count in exception_stats:
+        result.append({
+            "name": status,
+            "value": count
+        })
+    
+    return result
+
+def get_today_exception_records(db: Session, date: str = None, limit: int = 10):
+    """获取今日异常记录"""
+    target_date = datetime.strptime(date, '%Y-%m-%d').date() if date else datetime.now().date()
+    
+    # 查询异常记录
+    records = db.query(
+        AttendanceRecord,
+        Employee.name,
+        Employee.employee_no
+    ).join(Employee).filter(
+        and_(
+            func.date(AttendanceRecord.clock_in_time) == target_date,
+            AttendanceRecord.status.in_(['迟到', '早退', '缺勤', '缺卡', '位置异常'])
+        )
+    ).order_by(AttendanceRecord.clock_in_time.desc()).limit(limit).all()
+    
+    # 格式化返回数据
+    result = []
+    for record, employee_name, employee_no in records:
+        # 处理状态映射
+        status_map = {
+            'unprocessed': '未处理',
+            'processing': '处理中', 
+            'processed': '已处理'
+        }
+        process_status = getattr(record, 'process_status', 'unprocessed') or 'unprocessed'
+        
+        result.append({
+            "employee_name": employee_name,
+            "employee_no": employee_no,
+            "exception_type": record.status,
+            "time": record.clock_in_time.strftime('%H:%M') if record.clock_in_time else '',
+            "status": status_map.get(process_status, '未处理'),
+            "record_id": record.record_id
+        })
+    
+    return result

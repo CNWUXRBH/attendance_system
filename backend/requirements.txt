@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+mysql-connector-python
+pymysql
+SQLAlchemy
+pydantic
+python-jose[cryptography]
+passlib[bcrypt]
+pandas
+openpyxl
+python-multipart
+pydantic-settings
+xlsxwriter
+pyodbc
+python-dotenv
+requests
+schedule
