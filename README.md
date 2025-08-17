@@ -684,5 +684,7 @@ Attendance_system_demo/
 ## 联系方式
 
 如有问题或建议，请通过以下方式联系：
-- 提交Issue: [GitHub Issues]()
-- 邮箱: [your-email@example.com]()
+- 提交Issue: [GitHub Issues](https://github.com/CNWUXRBH/attendance_system/issues)
+- 邮箱: [Benhui_Ren@jabil.com](mailto:Benhui_Ren@jabil.com)
+- 微信: CNBH0618
+
