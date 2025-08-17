@@ -30,10 +30,10 @@ const Login = () => {
       height: '100vh',
       backgroundColor: '#f5f5f5'
     }}>
-      {/* 左侧深蓝色品牌区域 */}
+      {/* 左侧深色品牌区域 */}
       <div style={{
         flex: 1,
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%)',
+        background: 'linear-gradient(135deg, #001529 0%, #002140 50%, #003a5c 100%)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
@@ -69,10 +69,10 @@ const Login = () => {
             borderRadius: '12px',
             border: 'none'
           }}
-          bodyStyle={{ padding: '40px' }}
+          styles={{ body: { padding: '40px' } }}
         >
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <Title level={2} style={{ color: '#1e3a8a', marginBottom: '8px' }}>
+            <Title level={2} style={{ color: '#001529', marginBottom: '8px' }}>
               欢迎登录
             </Title>
             <Text type="secondary" style={{ fontSize: '14px' }}>
@@ -90,7 +90,7 @@ const Login = () => {
               rules={[{ required: true, message: '请输入用户名!' }]}
             >
               <Input 
-                prefix={<UserOutlined style={{ color: '#1e3a8a' }} />} 
+                prefix={<UserOutlined style={{ color: '#001529' }} />} 
                 placeholder="用户名"
                 style={{
                   borderRadius: '8px',
@@ -105,7 +105,7 @@ const Login = () => {
               rules={[{ required: true, message: '请输入密码!' }]}
             >
               <Input.Password
-                prefix={<LockOutlined style={{ color: '#1e3a8a' }} />}
+                prefix={<LockOutlined style={{ color: '#001529' }} />}
                 placeholder="密码"
                 style={{
                   borderRadius: '8px',
@@ -126,9 +126,9 @@ const Login = () => {
                   borderRadius: '8px',
                   fontSize: '16px',
                   fontWeight: '500',
-                  background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                  background: 'linear-gradient(135deg, #001529 0%, #003a5c 100%)',
                   border: 'none',
-                  boxShadow: '0 4px 12px rgba(30, 58, 138, 0.3)'
+                  boxShadow: '0 4px 12px rgba(0, 21, 41, 0.3)'
                 }}
               >
                 登录

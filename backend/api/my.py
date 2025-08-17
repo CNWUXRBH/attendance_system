@@ -17,7 +17,6 @@ async def get_my_profile(current_user: employee_model.Employee = Depends(get_cur
         "name": current_user.name,
         "email": current_user.email,
         "phone": current_user.phone,
-        "department": current_user.department.name if current_user.department else None,
         "position": current_user.position,
         "hireDate": current_user.hire_date.strftime("%Y-%m-%d") if current_user.hire_date else None,
         "hire_date": current_user.hire_date.strftime("%Y-%m-%d") if current_user.hire_date else None
