@@ -149,36 +149,8 @@ def export_records_to_excel(db: Session):
     
     return output
 
-def sync_from_external_system(db: Session):
-    """
-    从外部系统同步考勤数据
-    这里模拟从外部系统获取数据的过程
-    """
-    # 获取所有员工
-    employees = db.query(employee_model.Employee).all()
-    
-    if not employees:
-        return 0
-    
-    count = 0
-    # 模拟从外部系统获取的考勤数据
-    for employee in employees[:3]:  # 只为前3个员工生成模拟数据
-        # 生成模拟的考勤记录
-        mock_record = attendance_record_model.AttendanceRecord(
-            employee_id=employee.employee_id,
-            clock_in_time=datetime.now().replace(hour=9, minute=random.randint(0, 30)),
-            clock_out_time=datetime.now().replace(hour=18, minute=random.randint(0, 30)),
-            clock_type="正常",
-            device_id=f"EXT_DEVICE_{random.randint(1000, 9999)}",
-            location="外部系统同步",
-            status=random.choice(["正常", "迟到", "早退"])
-        )
-        
-        db.add(mock_record)
-        count += 1
-    
-    db.commit()
-    return count
+# 注意：模拟数据函数已移除，现在使用真实的MSSQL同步服务
+# 请使用 mssql_sync_service.sync_attendance_records() 进行数据同步
 
 def update_attendance_process_status(db: Session, record_id: int, process_status: str, remarks: str = None):
     """更新考勤记录的处理状态"""

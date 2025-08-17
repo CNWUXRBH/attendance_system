@@ -4,7 +4,7 @@ import { addEmployee } from '../../services/employee';
 
 const { Option } = Select;
 
-const AddEmployeeModal = ({ visible, onCancel, onSuccess }) => {
+const AddEmployeeModal = ({ open, onCancel, onSuccess }) => {
   const [form] = Form.useForm();
 
   const handleOk = async () => {
@@ -29,7 +29,7 @@ const AddEmployeeModal = ({ visible, onCancel, onSuccess }) => {
   return (
     <Modal
       title="添加员工"
-      open={visible}
+      open={open}
       onOk={handleOk}
       onCancel={onCancel}
       okText="确定"

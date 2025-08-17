@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.database import engine, SessionLocal, Base
-from api import auth, employees, attendance, schedules, shift_templates, holidays, overtime_rules, compensatory_time_rules, exception_rules, reports, dashboard, notifications, warnings, my
+from api import auth, employees, attendance, schedules, shift_templates, shift_types, holidays, overtime_rules, compensatory_time_rules, exception_rules, reports, dashboard, notifications, warnings, my
 from middleware.rate_limiting import RateLimitingMiddleware
 from services import employee_service
 from schemas.employee import EmployeeCreate
@@ -62,6 +62,7 @@ app.include_router(employees.router, prefix="/api/employees", tags=["员工管�
 app.include_router(attendance.router, prefix="/api/attendance", tags=["考勤管理"])
 app.include_router(schedules.router, prefix="/api/schedules", tags=["排班管理"])
 app.include_router(shift_templates.router, prefix="/api/shift_templates", tags=["班次模板"])
+app.include_router(shift_types.router, prefix="/api/shift_types", tags=["班次类型"])
 app.include_router(holidays.router, prefix="/api/holidays", tags=["节假日管理"])
 app.include_router(overtime_rules.router, prefix="/api/overtime-rules", tags=["加班规则"])
 app.include_router(compensatory_time_rules.router, prefix="/api/compensatory-time-rules", tags=["调休规则"])

@@ -119,7 +119,7 @@ const Exception = () => {
         <Table columns={columns} dataSource={data} rowKey="rule_id" />
       </div>
       <ExceptionRuleModal
-        visible={isModalVisible}
+        open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
           setEditingRule(null);

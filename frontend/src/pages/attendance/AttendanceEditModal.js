@@ -6,13 +6,13 @@ import { getEmployees } from '../../services/employee';
 
 const { Option } = Select;
 
-const AttendanceEditModal = ({ visible, onCancel, onSuccess, record, isEdit = true }) => {
+const AttendanceEditModal = ({ open, onCancel, onSuccess, record, isEdit = true }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState([]);
 
   useEffect(() => {
-    if (visible) {
+    if (open) {
       fetchEmployees();
       if (isEdit && record) {
         form.setFieldsValue({
@@ -29,7 +29,7 @@ const AttendanceEditModal = ({ visible, onCancel, onSuccess, record, isEdit = tr
         form.resetFields();
       }
     }
-  }, [visible, record, isEdit, form]);
+  }, [open, record, isEdit, form]);
 
   const fetchEmployees = async () => {
     try {
@@ -76,7 +76,7 @@ const AttendanceEditModal = ({ visible, onCancel, onSuccess, record, isEdit = tr
   return (
     <Modal
       title={isEdit ? '修正考勤记录' : '手动补录考勤'}
-      visible={visible}
+      open={open}
       onCancel={onCancel}
       footer={null}
       width={600}

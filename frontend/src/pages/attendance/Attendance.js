@@ -268,12 +268,12 @@ const Attendance = () => {
       </div>
       
       <AttendanceDetailModal
-        visible={isDetailModalVisible}
+        open={isDetailModalVisible}
         onCancel={() => setIsDetailModalVisible(false)}
         record={selectedRecord}
       />
       <AttendanceEditModal
-        visible={isEditModalVisible}
+        open={isEditModalVisible}
         onCancel={() => setIsEditModalVisible(false)}
         onSuccess={handleModalSuccess}
         record={selectedRecord}

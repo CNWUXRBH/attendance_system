@@ -1,14 +1,14 @@
 import React from 'react';
 import { Modal, Descriptions } from 'antd';
 
-const AttendanceDetailModal = ({ visible, onCancel, record }) => {
+const AttendanceDetailModal = ({ open, onCancel, record }) => {
   return (
     <Modal
-      title="考勤详情"
-      visible={visible}
-      onCancel={onCancel}
-      footer={null}
-      width={600}
+        title="考勤详情"
+        open={open}
+        onCancel={onCancel}
+        footer={null}
+        width={600}
     >
       <Descriptions bordered column={1}>
         <Descriptions.Item label="日期">{record?.date}</Descriptions.Item>

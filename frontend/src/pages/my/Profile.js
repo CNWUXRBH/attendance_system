@@ -66,7 +66,7 @@ const Profile = () => {
       </Card>
       
       <EditProfileModal
-        visible={editModalVisible}
+        open={editModalVisible}
         onCancel={handleEditCancel}
         onSuccess={handleEditSuccess}
         initialData={profile}

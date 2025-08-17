@@ -207,12 +207,12 @@ const Employee = () => {
         <Table columns={columns} dataSource={filteredData} rowKey="employee_id" />
       </div>
       <AddEmployeeModal
-        visible={isAddModalVisible}
+        open={isAddModalVisible}
         onCancel={() => setIsAddModalVisible(false)}
         onSuccess={handleAddSuccess}
       />
       <EditEmployeeModal
-        visible={isEditModalVisible}
+        open={isEditModalVisible}
         onCancel={() => {
           setEditingEmployee(null);
           setIsEditModalVisible(false);

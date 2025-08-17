@@ -83,6 +83,12 @@ const DayDetailModal = ({
               </div>
               <div className="stat-label">班次类型</div>
             </div>
+            <div className="stat-item">
+              <div className="stat-number" style={{ color: daySchedules.filter(s => s.conflict_info?.has_conflict).length > 0 ? '#ff4d4f' : '#52c41a' }}>
+                {daySchedules.filter(s => s.conflict_info?.has_conflict).length}
+              </div>
+              <div className="stat-label">冲突排班</div>
+            </div>
           </div>
         </div>
 
@@ -162,6 +168,11 @@ const DayDetailModal = ({
                                 status={item.status === 1 ? 'success' : 'default'} 
                                 text={item.status === 1 ? '已安排' : '待确认'} 
                               />
+                              {item.conflict_info?.has_conflict && (
+                                <Tooltip title={`冲突详情: ${item.conflict_info?.conflict_details || '存在排班冲突'}`}>
+                                  <Badge status="error" text="⚠️冲突" />
+                                </Tooltip>
+                              )}
                             </div>
                           }
                           description={

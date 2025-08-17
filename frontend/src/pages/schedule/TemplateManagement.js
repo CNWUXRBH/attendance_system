@@ -169,7 +169,7 @@ const TemplateManagement = () => {
       </Card>
       
       <TemplateModal
-        visible={isModalVisible}
+        open={isModalVisible}
         onCancel={handleModalCancel}
         onOk={handleModalOk}
         template={selectedTemplate}

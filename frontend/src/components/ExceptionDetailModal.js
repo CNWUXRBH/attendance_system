@@ -4,7 +4,7 @@ import { getAttendanceRecordDetail, updateAttendanceStatus } from '../services/a
 
 const { Option } = Select;
 
-const ExceptionDetailModal = ({ visible, onCancel, recordId, onStatusUpdate }) => {
+const ExceptionDetailModal = ({ open, onCancel, recordId, onStatusUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [record, setRecord] = useState(null);
   const [processing, setProcessing] = useState(false);
@@ -22,10 +22,10 @@ const ExceptionDetailModal = ({ visible, onCancel, recordId, onStatusUpdate }) =
   }, [recordId]);
 
   useEffect(() => {
-    if (visible && recordId) {
+    if (open && recordId) {
       fetchRecordDetail();
     }
-  }, [visible, recordId, fetchRecordDetail]);
+  }, [open, recordId, fetchRecordDetail]);
 
   const handleStatusChange = async (newStatus) => {
     setProcessing(true);
@@ -82,27 +82,26 @@ const ExceptionDetailModal = ({ visible, onCancel, recordId, onStatusUpdate }) =
 
   return (
     <Modal
-      title="异常记录详情"
-      open={visible}
+      title="异常详情"
+      open={open}
       onCancel={onCancel}
-      width={600}
+      width={800}
       footer={[
-        <Button key="cancel" onClick={onCancel}>
+        <Button key="close" onClick={onCancel}>
           关闭
         </Button>,
-        record && record.process_status !== 'processed' && (
+        record && record.status === 'pending' && (
           <Select
             key="status"
             style={{ width: 120, marginRight: 8 }}
-            value={record.process_status}
+            placeholder="处理状态"
             onChange={handleStatusChange}
             loading={processing}
           >
-            <Option value="unprocessed">未处理</Option>
-            <Option value="processing">处理中</Option>
-            <Option value="processed">已处理</Option>
+            <Option value="approved">通过</Option>
+            <Option value="rejected">拒绝</Option>
           </Select>
-        )
+        ),
       ]}
     >
       {loading ? (

@@ -3,24 +3,23 @@ import { Modal, Form, Input, Button, message } from 'antd';
 import { updateMyProfile } from '../services/my';
 
 
-const EditProfileModal = ({ visible, onCancel, onSuccess, initialData }) => {
+const EditProfileModal = ({ open, onCancel, onSuccess, initialData }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
 
   useEffect(() => {
-    if (visible) {
-      // 设置表单初始值
-      if (initialData) {
-        form.setFieldsValue({
-          name: initialData.name,
-          email: initialData.email,
-          phone: initialData.phone,
-          position: initialData.position,
-        });
-      }
+    if (open && initialData) {
+      form.setFieldsValue({
+        name: initialData.name,
+        email: initialData.email,
+        phone: initialData.phone,
+        position: initialData.position,
+      });
+    } else if (open) {
+      form.resetFields();
     }
-  }, [visible, initialData, form]);
+  }, [open, initialData, form]);
 
 
 
@@ -47,10 +46,10 @@ const EditProfileModal = ({ visible, onCancel, onSuccess, initialData }) => {
   return (
     <Modal
       title="编辑个人信息"
-      open={visible}
+      open={open}
       onCancel={handleCancel}
       footer={null}
-      width={600}
+      width={500}
     >
       <Form
         form={form}

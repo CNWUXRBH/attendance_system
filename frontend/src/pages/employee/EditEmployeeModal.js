@@ -1,11 +1,10 @@
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, DatePicker, Select, message } from 'antd';
+import { Modal, Form, Input, DatePicker, Select } from 'antd';
 import dayjs from 'dayjs';
-import { updateEmployee } from '../../services/employee';
 
 const { Option } = Select;
 
-const EditEmployeeModal = ({ visible, onCancel, onSuccess, employee }) => {
+const EditEmployeeModal = ({ open, onCancel, onSuccess, employee }) => {
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -18,33 +17,14 @@ const EditEmployeeModal = ({ visible, onCancel, onSuccess, employee }) => {
     }
   }, [employee, form]);
 
-  const handleOk = async () => {
-    try {
-      const values = await form.validateFields();
-      // 格式化日期
-      const formattedValues = {
-        ...values,
-        hire_date: values.hire_date?.format('YYYY-MM-DD'),
-        contract_end_date: values.contract_end_date?.format('YYYY-MM-DD'),
-      };
-      await updateEmployee(employee.employee_id, formattedValues);
-      message.success('员工信息更新成功');
-      form.resetFields();
-      onSuccess();
-    } catch (error) {
-      console.error('更新员工信息失败:', error);
-      message.error('更新员工信息失败');
-    }
-  };
+
 
   return (
     <Modal
-      title="编辑员工"
-      open={visible}
-      onOk={handleOk}
+      title="编辑员工信息"
+      open={open}
       onCancel={onCancel}
-      okText="确定"
-      cancelText="取消"
+      footer={null}
       width={600}
     >
       <Form form={form} layout="vertical">

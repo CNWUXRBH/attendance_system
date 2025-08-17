@@ -4,7 +4,7 @@ import moment from 'moment';
 
 const { Option } = Select;
 
-const EditScheduleModal = ({ open, onCancel, onOk, schedule }) => {
+const EditScheduleModal = ({ open, onCancel, onSubmit, schedule, employees }) => {
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -20,7 +20,7 @@ const EditScheduleModal = ({ open, onCancel, onOk, schedule }) => {
     form
       .validateFields()
       .then((values) => {
-        onOk(schedule.id, values);
+        onSubmit(schedule.id, values);
         form.resetFields();
       })
       .catch((info) => {

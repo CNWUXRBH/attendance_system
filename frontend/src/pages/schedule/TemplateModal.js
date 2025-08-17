@@ -5,13 +5,13 @@ import moment from 'moment';
 
 const { Option } = Select;
 
-const TemplateModal = ({ visible, onCancel, onOk, template = null }) => {
+const TemplateModal = ({ open, onCancel, onOk, template = null }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const isEdit = !!template;
 
   useEffect(() => {
-    if (visible && template) {
+    if (open && template) {
       form.setFieldsValue({
         name: template.name,
         description: template.description,
@@ -19,10 +19,10 @@ const TemplateModal = ({ visible, onCancel, onOk, template = null }) => {
         start_time: template.start_time ? moment(template.start_time, 'HH:mm:ss') : null,
         end_time: template.end_time ? moment(template.end_time, 'HH:mm:ss') : null,
       });
-    } else if (visible) {
+    } else if (open) {
       form.resetFields();
     }
-  }, [visible, template, form]);
+  }, [open, template, form]);
 
   const handleOk = async () => {
     try {
@@ -62,7 +62,7 @@ const TemplateModal = ({ visible, onCancel, onOk, template = null }) => {
   return (
     <Modal
       title={isEdit ? '编辑排班模板' : '新建排班模板'}
-      visible={visible}
+      open={open}
       onOk={handleOk}
       onCancel={handleCancel}
       okText="保存"

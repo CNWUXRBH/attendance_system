@@ -340,7 +340,7 @@ const Dashboard = () => {
       </Card>
       
       <ExceptionDetailModal
-        visible={detailModalVisible}
+        open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
         recordId={selectedRecordId}
         onStatusUpdate={handleStatusUpdate}

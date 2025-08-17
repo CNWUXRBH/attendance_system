@@ -3,12 +3,12 @@ import { Modal, Form, Input, Select, InputNumber } from 'antd';
 
 const { Option } = Select;
 
-const ExceptionRuleModal = ({ visible, onCancel, onOk, rule }) => {
+const ExceptionRuleModal = ({ open, onCancel, onOk, rule }) => {
   const [form] = Form.useForm();
   const [ruleType, setRuleType] = React.useState('');
 
   useEffect(() => {
-    if (rule) {
+    if (open && rule) {
       // 将后端字段映射到前端字段
       const mappedRule = {
         name: rule.rule_name,
@@ -18,11 +18,11 @@ const ExceptionRuleModal = ({ visible, onCancel, onOk, rule }) => {
       };
       form.setFieldsValue(mappedRule);
       setRuleType(rule.rule_type || '');
-    } else {
+    } else if (open) {
       form.resetFields();
       setRuleType('');
     }
-  }, [rule, form]);
+  }, [open, rule, form]);
 
   const handleOk = () => {
     form
@@ -46,7 +46,7 @@ const ExceptionRuleModal = ({ visible, onCancel, onOk, rule }) => {
   return (
     <Modal
       title={rule ? '编辑规则' : '新增规则'}
-      visible={visible}
+      open={open}
       onOk={handleOk}
       onCancel={onCancel}
       okText="确定"
