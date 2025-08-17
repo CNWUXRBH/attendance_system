@@ -1,0 +1,167 @@
+.day-detail-modal .ant-modal-body {
+  padding: 24px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.day-detail-modal .ant-modal-header {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 24px;
+}
+
+.day-detail-modal .ant-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* 统计信息卡片样式 */
+.day-detail-modal .stats-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  color: white;
+  margin-bottom: 20px;
+}
+
+.day-detail-modal .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  text-align: center;
+}
+
+.day-detail-modal .stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.day-detail-modal .stat-number {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.day-detail-modal .stat-label {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* 班次分组样式 */
+.day-detail-modal .shift-group {
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.day-detail-modal .shift-header {
+  padding: 12px 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.day-detail-modal .shift-header .ant-badge {
+  margin-right: 8px;
+}
+
+/* 员工列表项样式 */
+.day-detail-modal .ant-list-item {
+  padding: 16px;
+  border-bottom: 1px solid #f5f5f5;
+  transition: background-color 0.2s;
+}
+
+.day-detail-modal .ant-list-item:hover {
+  background-color: #fafafa;
+}
+
+.day-detail-modal .ant-list-item:last-child {
+  border-bottom: none;
+}
+
+.day-detail-modal .ant-list-item-meta-avatar {
+  margin-right: 12px;
+}
+
+.day-detail-modal .employee-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+/* 操作按钮样式 */
+.day-detail-modal .ant-list-item-action {
+  margin-left: 8px;
+}
+
+.day-detail-modal .ant-btn {
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.day-detail-modal .ant-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 空状态样式 */
+.day-detail-modal .empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.day-detail-modal .empty-state .anticon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: #d9d9d9;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .day-detail-modal .ant-modal {
+    width: 95% !important;
+    margin: 10px;
+  }
+  
+  .day-detail-modal .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .day-detail-modal .ant-list-item-action {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  
+  .day-detail-modal .ant-list-item-action > li {
+    margin-bottom: 4px;
+  }
+}
+
+/* 滚动条样式 */
+.day-detail-modal .ant-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.day-detail-modal .ant-modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.day-detail-modal .ant-modal-body::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.day-detail-modal .ant-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
