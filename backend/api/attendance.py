@@ -7,9 +7,32 @@ from fastapi.responses import StreamingResponse
 from database.database import get_db
 from schemas import attendance_record as attendance_record_schema
 from services import attendance_service
-from services.exception_detection_service import exception_detection_service
 
 router = APIRouter()
+
+@router.get("/debug-raw-records")
+def debug_raw_attendance_records(db: Session = Depends(get_db)):
+    """
+    调试用：直接查询考勤记录表，不使用JOIN
+    """
+    try:
+        raw_records = attendance_service.get_attendance_records(db, limit=10)
+        return {
+            "count": len(raw_records),
+            "records": [{
+                "record_id": r.record_id,
+                "employee_id": r.employee_id,
+                "clock_in_time": r.clock_in_time.isoformat() if r.clock_in_time else None,
+                "clock_out_time": r.clock_out_time.isoformat() if r.clock_out_time else None,
+                "status": r.status
+            } for r in raw_records]
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "count": 0,
+            "records": []
+        }
 
 @router.post("/", response_model=attendance_record_schema.AttendanceRecord)
 def create_attendance_record(record: attendance_record_schema.AttendanceRecordCreate, db: Session = Depends(get_db)):
@@ -27,16 +50,98 @@ def export_attendance_records(db: Session = Depends(get_db)):
         headers={"Content-Disposition": "attachment; filename=attendance_records.xlsx"}
     )
 
+@router.post("/import")
+async def import_attendance_records(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    try:
+        result = await attendance_service.import_records_from_excel(db, file)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+
+@router.get("/sync-logs")
+def get_sync_logs(limit: int = 50, db: Session = Depends(get_db)):
+    """
+    获取同步日志
+    """
+    try:
+        from services.mssql_sync_service import mssql_sync_service
+        logs = mssql_sync_service.get_sync_logs(db, limit=limit)
+        
+        return {
+            "success": True,
+            "logs": [
+                {
+                    "id": log.id,
+                    "sync_date": log.sync_date.isoformat() if log.sync_date else None,
+                    "employee_count": log.employee_count,
+                    "record_count": log.record_count,
+                    "success_count": log.success_count,
+                    "error_count": log.error_count,
+                    "status": log.status,
+                    "error_message": log.error_message,
+                    "created_at": log.created_at.isoformat() if log.created_at else None
+                }
+                for log in logs
+            ]
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取同步日志失败: {str(e)}",
+            "logs": []
+        }
+
+@router.get("/test-mssql-connection")
+def test_mssql_connection():
+    """
+    测试MSSQL数据库连接
+    """
+    try:
+        from services.mssql_sync_service import mssql_sync_service
+        is_connected = mssql_sync_service.test_mssql_connection()
+        
+        return {
+            "connected": is_connected,
+            "message": "MSSQL连接正常" if is_connected else "MSSQL连接失败"
+        }
+    except Exception as e:
+        return {
+            "connected": False,
+            "message": f"MSSQL连接测试失败: {str(e)}"
+        }
+
+
 @router.get("/", response_model=List[attendance_record_schema.AttendanceRecordResponse])
 def read_attendance_records(
     skip: int = 0,
     limit: int = 100,
     employee_id: int = None,
+    name: str = None,
+    startDate: str = None,
+    endDate: str = None,
     start_date: date = None,
     end_date: date = None,
     db: Session = Depends(get_db)
 ):
-    records = attendance_service.get_attendance_records_formatted(db, skip=skip, limit=limit, employee_id=employee_id, start_date=start_date, end_date=end_date)
+    # 处理前端传递的参数格式
+    if startDate and not start_date:
+        try:
+            start_date = date.fromisoformat(startDate)
+        except ValueError:
+            pass
+    if endDate and not end_date:
+        try:
+            end_date = date.fromisoformat(endDate)
+        except ValueError:
+            pass
+    
+    records = attendance_service.get_attendance_records_formatted(
+        db, skip=skip, limit=limit, employee_id=employee_id, 
+        name=name, start_date=start_date, end_date=end_date
+    )
     return records
 
 @router.get("/{record_id}", response_model=attendance_record_schema.AttendanceRecord)
@@ -77,196 +182,3 @@ def update_attendance_process_status(
         return {"message": "处理状态更新成功", "record_id": record_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"更新失败: {str(e)}")
-
-@router.post("/import")
-async def import_attendance_records(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    if not file.filename.endswith('.xlsx'):
-        raise HTTPException(status_code=400, detail="Invalid file format. Please upload an Excel file.")
-    
-    contents = await file.read()
-    count = attendance_service.import_records_from_file(db, contents)
-    
-    return {"message": f"{count} attendance records imported successfully."}
-
-@router.post("/sync-external")
-def sync_from_external_system(
-    sync_date: str = None,
-    employee_nos: str = None,
-    db: Session = Depends(get_db)
-):
-    """
-    从MSSQL外部系统同步考勤数据
-    
-    Args:
-        sync_date: 同步日期，格式：YYYY-MM-DD，默认为今天
-        employee_nos: 员工工号列表，用逗号分隔，为空则同步所有员工
-    """
-    try:
-        from services.mssql_sync_service import mssql_sync_service
-        
-        # 解析员工工号列表
-        employee_no_list = None
-        if employee_nos:
-            employee_no_list = [no.strip() for no in employee_nos.split(',') if no.strip()]
-        
-        # 执行同步
-        result = mssql_sync_service.sync_attendance_records(
-            db=db,
-            sync_date=sync_date,
-            employee_nos=employee_no_list
-        )
-        
-        return result
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"同步失败: {str(e)}")
-
-@router.get("/sync-logs")
-def get_sync_logs(limit: int = 50, db: Session = Depends(get_db)):
-    """
-    获取同步日志列表
-    """
-    try:
-        from services.mssql_sync_service import mssql_sync_service
-        logs = mssql_sync_service.get_sync_logs(db, limit)
-        
-        return {
-            "logs": [
-                {
-                    "id": log.id,
-                    "sync_type": log.sync_type,
-                    "sync_source": log.sync_source,
-                    "sync_date": log.sync_date,
-                    "employee_no": log.employee_no,
-                    "sync_status": log.sync_status,
-                    "records_count": log.records_count,
-                    "error_message": log.error_message,
-                    "sync_start_time": log.sync_start_time.isoformat() if log.sync_start_time else None,
-                    "sync_end_time": log.sync_end_time.isoformat() if log.sync_end_time else None,
-                    "created_at": log.created_at.isoformat() if log.created_at else None
-                }
-                for log in logs
-            ]
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取同步日志失败: {str(e)}")
-
-@router.get("/test-mssql-connection")
-def test_mssql_connection():
-    """
-    测试MSSQL数据库连接
-    """
-    try:
-        from services.mssql_sync_service import mssql_sync_service
-        is_connected = mssql_sync_service.test_mssql_connection()
-        
-        return {
-            "connected": is_connected,
-            "message": "MSSQL连接正常" if is_connected else "MSSQL连接失败"
-        }
-    except Exception as e:
-        return {
-            "connected": False,
-            "message": f"MSSQL连接测试失败: {str(e)}"
-        }
-
-@router.post("/detect-exceptions")
-def detect_attendance_exceptions(
-    record_id: int = None,
-    start_date: str = None,
-    end_date: str = None,
-    db: Session = Depends(get_db)
-):
-    """
-    检测考勤异常
-    
-    Args:
-        record_id: 指定记录ID，如果提供则只检测该记录
-        start_date: 开始日期 (YYYY-MM-DD)
-        end_date: 结束日期 (YYYY-MM-DD)
-        db: 数据库会话
-        
-    Returns:
-        检测到的异常列表
-    """
-    try:
-        exceptions = exception_detection_service.detect_attendance_exceptions(
-            db=db,
-            record_id=record_id,
-            start_date=start_date,
-            end_date=end_date
-        )
-        
-        return {
-            "status": "success",
-            "message": f"异常检测完成，共发现 {len(exceptions)} 个异常",
-            "exceptions": exceptions,
-            "total_count": len(exceptions)
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"异常检测失败: {str(e)}")
-
-@router.post("/batch-detect-exceptions")
-def batch_detect_and_update_exceptions(
-    start_date: str = None,
-    end_date: str = None,
-    db: Session = Depends(get_db)
-):
-    """
-    批量检测异常并更新记录状态
-    
-    Args:
-        start_date: 开始日期 (YYYY-MM-DD)
-        end_date: 结束日期 (YYYY-MM-DD)
-        db: 数据库会话
-        
-    Returns:
-        批量处理结果
-    """
-    try:
-        # 获取需要检测的记录
-        records = attendance_service.get_attendance_records(
-            db=db,
-            start_date=start_date,
-            end_date=end_date,
-            limit=1000  # 限制批量处理数量
-        )
-        
-        total_exceptions = 0
-        processed_records = 0
-        
-        for record in records:
-            try:
-                exceptions = exception_detection_service.detect_attendance_exceptions(
-                    db=db,
-                    record_id=record.record_id
-                )
-                
-                exception_detection_service.update_record_status_based_on_exceptions(
-                    db=db,
-                    record_id=record.record_id,
-                    exceptions=exceptions
-                )
-                
-                total_exceptions += len(exceptions)
-                processed_records += 1
-                
-            except Exception as e:
-                print(f"处理记录 {record.record_id} 时出错: {str(e)}")
-                continue
-        
-        return {
-            "status": "success",
-            "message": f"批量异常检测完成",
-            "processed_records": processed_records,
-            "total_exceptions": total_exceptions,
-            "details": {
-                "start_date": start_date,
-                "end_date": end_date,
-                "total_records_found": len(records)
-            }
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"批量异常检测失败: {str(e)}")

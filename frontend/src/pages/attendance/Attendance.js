@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Table, DatePicker, Input, Button, Space, message, Upload, Popconfirm } from 'antd';
-import { PlusOutlined, UploadOutlined, DownloadOutlined, EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
-import { getAttendanceRecords, deleteAttendanceRecord, importAttendanceRecords, exportAttendanceRecords, syncExternalAttendance } from '../../services/attendance';
+import { Table, DatePicker, Input, Button, Space, message, Upload } from 'antd';
+import { PlusOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
+import { getAttendanceRecords, importAttendanceRecords, exportAttendanceRecords } from '../../services/attendance';
 import AttendanceDetailModal from './AttendanceDetailModal';
 import AttendanceEditModal from './AttendanceEditModal';
 
@@ -17,49 +17,24 @@ const Attendance = () => {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isEditMode, setIsEditMode] = useState(true);
-  const [apiStatus, setApiStatus] = useState('connected');
-  const [lastSyncTime, setLastSyncTime] = useState(new Date());
-  const [isSyncing, setIsSyncing] = useState(false);
 
   const fetchAttendances = async (params) => {
     try {
+      console.log('fetchAttendances called with params:', params);
       const result = await getAttendanceRecords(params);
+      console.log('API response result:', result);
+      console.log('Result type:', typeof result);
+      console.log('Result length:', Array.isArray(result) ? result.length : 'Not an array');
       setData(result);
-      setApiStatus('connected');
-      setLastSyncTime(new Date());
     } catch (error) {
-      setApiStatus('disconnected');
       console.error('Failed to fetch attendances:', error);
     }
   };
 
-  const handleSyncFromExternal = async () => {
-    setIsSyncing(true);
-    try {
-      const result = await syncExternalAttendance();
-      
-      // 检查同步状态
-      if (result.status === 'failed') {
-        message.error(`同步失败: ${result.message || '未知错误'}`);
-        setApiStatus('disconnected');
-      } else if (result.status === 'success') {
-        message.success(`${result.message || '同步成功'}，处理了 ${result.records_count || 0} 条记录`);
-        setApiStatus('connected');
-        setLastSyncTime(new Date());
-        await fetchAttendances();
-      } else {
-        message.warning(`同步状态未知: ${result.message || '请检查系统状态'}`);
-      }
-    } catch (error) {
-      message.error('同步请求失败: ' + (error.message || '网络连接错误'));
-      setApiStatus('disconnected');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+
 
   useEffect(() => {
-    fetchAttendances();
+    fetchAttendances({});
   }, []);
 
   const handleFilterChange = (key, value) => {
@@ -67,11 +42,19 @@ const Attendance = () => {
   };
 
   const handleSearch = () => {
-    const params = {
-      startDate: filters.dates?.[0]?.format('YYYY-MM-DD'),
-      endDate: filters.dates?.[1]?.format('YYYY-MM-DD'),
-      name: filters.name
-    };
+    const params = {};
+    
+    // 只有当用户设置了日期过滤器时才添加日期参数
+    if (filters.dates && filters.dates.length === 2) {
+      params.startDate = filters.dates[0]?.format('YYYY-MM-DD');
+      params.endDate = filters.dates[1]?.format('YYYY-MM-DD');
+    }
+    
+    // 只有当用户输入了姓名时才添加姓名参数
+    if (filters.name && filters.name.trim()) {
+      params.name = filters.name.trim();
+    }
+    
     fetchAttendances(params);
   };
 
@@ -81,21 +64,7 @@ const Attendance = () => {
     setIsEditModalVisible(true);
   };
 
-  const handleEdit = (record) => {
-    setSelectedRecord(record);
-    setIsEditMode(true);
-    setIsEditModalVisible(true);
-  };
 
-  const handleDelete = async (recordId) => {
-    try {
-      await deleteAttendanceRecord(recordId);
-      message.success('删除成功');
-      fetchAttendances();
-    } catch (error) {
-      message.error('删除失败');
-    }
-  };
 
   const handleImport = async (file) => {
     try {
@@ -170,27 +139,8 @@ const Attendance = () => {
           >
             详情
           </Button>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            编辑
-          </Button>
-          <Popconfirm
-            title="确定要删除这条考勤记录吗？"
-            onConfirm={() => handleDelete(record.record_id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Button
-              type="link"
-              danger
-              icon={<DeleteOutlined />}
-            >
-              删除
-            </Button>
-          </Popconfirm>
+
+
         </Space>
       ),
     },
@@ -240,32 +190,7 @@ const Attendance = () => {
         <Table columns={columns} dataSource={data} rowKey="id" />
       </div>
       
-      {/* API状态指示器 */}
-      <div className="bg-white mt-4 p-4 rounded-lg shadow">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${
-                apiStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'
-              }`}></div>
-              <span className="text-sm text-gray-600">
-                API 连接状态：{apiStatus === 'connected' ? '已连接' : '连接失败'}
-              </span>
-            </div>
-            <div className="text-sm text-gray-600">
-              最后同步时间：{lastSyncTime.toLocaleString('zh-CN')}
-            </div>
-          </div>
-          <Button 
-            type="primary" 
-            icon={<SyncOutlined spin={isSyncing} />}
-            onClick={handleSyncFromExternal}
-            loading={isSyncing}
-          >
-            同步数据
-          </Button>
-        </div>
-      </div>
+
       
       <AttendanceDetailModal
         open={isDetailModalVisible}

@@ -5,37 +5,34 @@ from datetime import datetime, timedelta
 import pandas as pd
 from io import BytesIO
 
-from models import attendance_record as models_ar, schedule as models_s, shift_template as models_st, employee as models_e
+from models import attendance_record as models_ar, employee as models_e
 
 def _calculate_work_details(record, db):
-    schedule = db.query(models_s.Schedule).filter(
-        models_s.Schedule.employee_id == record.employee_id,
-        func.date(record.clock_in_time) >= models_s.Schedule.start_date,
-        func.date(record.clock_in_time) <= models_s.Schedule.end_date
-    ).first()
-
-    if not schedule or not record.clock_in_time or not record.clock_out_time:
+    """
+    简化的工作时长计算，不依赖排班信息
+    """
+    if not record.clock_in_time or not record.clock_out_time:
         return None, None, None, None
 
-    shift_template = db.query(models_st.ShiftTemplate).filter(models_st.ShiftTemplate.id == schedule.shift_type_id).first()
-    if not shift_template:
-        return None, None, None, None
-
+    # 计算实际工作时长
     work_duration = record.clock_out_time - record.clock_in_time
-    scheduled_work_duration = timedelta(hours=shift_template.end_time.hour - shift_template.start_time.hour, 
-                                        minutes=shift_template.end_time.minute - shift_template.start_time.minute)
     
-    overtime = work_duration - scheduled_work_duration if work_duration > scheduled_work_duration else timedelta(0)
+    # 假设标准工作时长为8小时
+    standard_work_duration = timedelta(hours=8)
     
-    status = "正常"
-    if record.clock_in_time.time() > shift_template.start_time:
-        status = "迟到"
-    if record.clock_out_time.time() < shift_template.end_time:
-        status = "早退"
-
-    return work_duration, overtime, status, shift_template.name
+    # 计算加班时长（超过8小时的部分）
+    overtime = work_duration - standard_work_duration if work_duration > standard_work_duration else timedelta(0)
+    
+    # 简单的状态判断（基于记录中的状态字段，如果没有则默认为正常）
+    status = record.status if record.status else "正常"
+    
+    # 返回工作时长、加班时长、状态和班次名称（固定为"标准班次"）
+    return work_duration, overtime, status, "标准班次"
 
 def get_detailed_report_data(db: Session, start_date: datetime.date, end_date: datetime.date):
+    """
+    获取详细报表数据，简化版本不依赖排班信息
+    """
     records = db.query(models_ar.AttendanceRecord).filter(
         func.date(models_ar.AttendanceRecord.clock_in_time) >= start_date,
         func.date(models_ar.AttendanceRecord.clock_in_time) <= end_date
@@ -48,40 +45,12 @@ def get_detailed_report_data(db: Session, start_date: datetime.date, end_date: d
     employees = db.query(models_e.Employee).filter(models_e.Employee.employee_id.in_(employee_ids)).all()
     employee_map = {e.employee_id: e for e in employees}
 
-    schedules = db.query(models_s.Schedule).filter(
-        models_s.Schedule.employee_id.in_(employee_ids),
-        models_s.Schedule.start_date <= end_date,
-        models_s.Schedule.end_date >= start_date
-    ).all()
-    schedule_map = {(s.employee_id, d.date()): s for s in schedules for d in pd.date_range(s.start_date, s.end_date)}
-
-    shift_template_ids = {s.shift_type_id for s in schedules}
-    shift_templates = db.query(models_st.ShiftTemplate).filter(models_st.ShiftTemplate.id.in_(shift_template_ids)).all()
-    shift_template_map = {st.id: st for st in shift_templates}
-
     report_data = []
     for record in records:
         employee = employee_map.get(record.employee_id)
-        schedule = schedule_map.get((record.employee_id, record.clock_in_time.date()))
         
-        work_duration, overtime, status, shift_name = None, None, "未排班", None
-
-        if schedule:
-            shift_template = shift_template_map.get(schedule.shift_type_id)
-            if shift_template:
-                shift_name = shift_template.name
-                if record.clock_in_time and record.clock_out_time:
-                    work_duration = record.clock_out_time - record.clock_in_time
-                    scheduled_work_duration = timedelta(hours=shift_template.end_time.hour - shift_template.start_time.hour, 
-                                                        minutes=shift_template.end_time.minute - shift_template.start_time.minute)
-                    
-                    overtime = work_duration - scheduled_work_duration if work_duration > scheduled_work_duration else timedelta(0)
-                    
-                    status = "正常"
-                    if record.clock_in_time.time() > shift_template.start_time:
-                        status = "迟到"
-                    if record.clock_out_time.time() < shift_template.end_time:
-                        status = "早退"
+        # 使用简化的工作时长计算
+        work_duration, overtime, status, shift_name = _calculate_work_details(record, db)
 
         report_data.append({
             "employee_name": employee.name if employee else "N/A",
@@ -89,7 +58,7 @@ def get_detailed_report_data(db: Session, start_date: datetime.date, end_date: d
             "clock_out_time": record.clock_out_time,
             "work_duration": str(work_duration) if work_duration else "N/A",
             "overtime": str(overtime) if overtime else "N/A",
-            "status": status,
+            "status": status if status else "N/A",
             "shift_name": shift_name if shift_name else "N/A"
         })
     return report_data

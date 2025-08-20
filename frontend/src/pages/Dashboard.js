@@ -1,77 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Card, Row, Col, Statistic, message, DatePicker, Table, Button, Tag } from 'antd';
-import * as echarts from 'echarts';
-import { 
-  getDashboardStats, 
-  getExceptionStats, 
-  getExceptionRecords 
-} from '../services/dashboard';
-import { exportExceptionRecords } from '../services/report';
-
-import moment from 'moment';
+import { Card, Row, Col, Statistic, message, DatePicker, Table, Tag } from 'antd';
+import { getDashboardStats } from '../services/dashboard';
+import { getAttendanceRecords } from '../services/attendance';
+import dayjs from 'dayjs';
 import { Icon } from '@iconify/react';
-import ExceptionDetailModal from '../components/ExceptionDetailModal';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState(null);
-  const [exceptionStats, setExceptionStats] = useState([]);
-  const [exceptionRecords, setExceptionRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
-  const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedRecordId, setSelectedRecordId] = useState(null);
+  const [stats, setStats] = useState({});
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
 
-  const getExceptionChartOption = useCallback(() => {
-    const chartData = exceptionStats.map(item => ({
-      value: item.value,
-      name: item.name
-    }));
 
-    return {
-      tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
-      legend: { 
-        orient: 'vertical', 
-        left: 'right', 
-        top: 'center',
-        textStyle: { color: '#666' }
-      },
-      series: [{
-        name: '异常类型',
-        type: 'pie',
-        radius: ['50%', '70%'],
-        center: ['40%', '50%'],
-        avoidLabelOverlap: false,
-        label: { show: false, position: 'center' },
-        emphasis: { 
-          label: { 
-            show: true, 
-            fontSize: '20', 
-            fontWeight: 'bold' 
-          }
-        },
-        labelLine: { show: false },
-        data: chartData
-      }]
-    };
-  }, [exceptionStats]);
-
-  const initCharts = useCallback(() => {
-    // 初始化异常类型分布图表
-    const exceptionChartDom = document.getElementById('exceptionChart');
-    if (exceptionChartDom) {
-      const exceptionChart = echarts.init(exceptionChartDom);
-      exceptionChart.setOption(getExceptionChartOption());
-      
-      // 窗口大小变化时重绘图表
-      const resizeHandler = () => exceptionChart.resize();
-      window.addEventListener('resize', resizeHandler);
-
-      return () => {
-        window.removeEventListener('resize', resizeHandler);
-        exceptionChart.dispose();
-      }
-    }
-  }, [getExceptionChartOption]);
 
   const fetchAllData = useCallback(async () => {
     try {
@@ -80,15 +20,17 @@ const Dashboard = () => {
         date: selectedDate
       };
       
-      const [statsRes, exceptionStatsRes, exceptionRecordsRes] = await Promise.all([
-        getDashboardStats(params),
-        getExceptionStats(params),
-        getExceptionRecords(params)
-      ]);
-      
+      const statsRes = await getDashboardStats(params);
       setStats(statsRes);
-      setExceptionStats(exceptionStatsRes || []);
-      setExceptionRecords(exceptionRecordsRes || []);
+      
+      // 获取今日考勤记录
+      const attendanceParams = {
+        startDate: selectedDate,
+        endDate: selectedDate,
+        limit: 10 // 限制显示最近10条记录
+      };
+      const attendanceRes = await getAttendanceRecords(attendanceParams);
+      setAttendanceRecords(Array.isArray(attendanceRes) ? attendanceRes : []);
     } catch (error) {
       console.error('获取仪表盘数据失败:', error);
       message.error('获取数据失败');
@@ -101,15 +43,8 @@ const Dashboard = () => {
     fetchAllData();
   }, [fetchAllData]);
 
-  useEffect(() => {
-    if (exceptionStats.length > 0) {
-      const cleanup = initCharts();
-      return cleanup;
-    }
-  }, [exceptionStats, initCharts]);
-
-  // 异常记录表格列配置
-  const getExceptionColumns = () => [
+  // 考勤记录表格列配置
+  const getAttendanceColumns = () => [
     {
       title: '姓名',
       dataIndex: 'employee_name',
@@ -121,20 +56,16 @@ const Dashboard = () => {
       key: 'employee_no',
     },
     {
-      title: '异常类型',
-      dataIndex: 'exception_type',
-      key: 'exception_type',
-      render: (text) => (
-        <Tag color={getExceptionTagColor(text)}>
-          {text}
-        </Tag>
-      ),
+      title: '上班时间',
+      dataIndex: 'clock_in_time',
+      key: 'clock_in_time',
+      render: (text) => text ? dayjs(text).format('HH:mm') : '-',
     },
     {
-      title: '时间',
-      dataIndex: 'time',
-      key: 'time',
-      render: (text) => text,
+      title: '下班时间',
+      dataIndex: 'clock_out_time',
+      key: 'clock_out_time',
+      render: (text) => text ? dayjs(text).format('HH:mm') : '-',
     },
     {
       title: '状态',
@@ -142,75 +73,18 @@ const Dashboard = () => {
       key: 'status',
       render: (status) => {
         const statusConfig = {
-          'unprocessed': { color: 'red', text: '未处理' },
-          'processing': { color: 'orange', text: '处理中' },
-          'processed': { color: 'green', text: '已处理' }
+          '正常': { color: 'green', text: '正常' },
+          '迟到': { color: 'orange', text: '迟到' },
+          '早退': { color: 'orange', text: '早退' },
+          '缺勤': { color: 'red', text: '缺勤' }
         };
         const config = statusConfig[status] || { color: 'default', text: status };
         return <Tag color={config.color}>{config.text}</Tag>;
       },
     },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Button 
-          type="link" 
-          style={{ color: '#2C5EFF' }}
-          onClick={() => handleExceptionAction(record)}
-        >
-          {record.status === 'unprocessed' ? '标记处理' : '查看详情'}
-        </Button>
-      ),
-    },
   ];
 
-  // 获取异常类型标签颜色
-  const getExceptionTagColor = (type) => {
-    const colorMap = {
-      '迟到': 'orange',
-      '早退': 'orange',
-      '迟到早退': 'orange',
-      '缺卡': 'red',
-      '缺勤': 'red',
-      '位置异常': 'volcano'
-    };
-    return colorMap[type] || 'default';
-  };
 
-  // 处理异常记录操作
-  const handleExceptionAction = (record) => {
-    setSelectedRecordId(record.record_id);
-    setDetailModalVisible(true);
-  };
-
-  // 处理状态更新后的回调
-  const handleStatusUpdate = () => {
-    fetchAllData();
-  };
-
-  // 导出异常记录报表
-  const handleExportReport = async () => {
-    try {
-      const params = {
-        start_date: selectedDate,
-        end_date: selectedDate
-      };
-      const response = await exportExceptionRecords(params);
-      const url = window.URL.createObjectURL(new Blob([response]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `异常记录报表_${selectedDate}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      message.success('导出成功');
-    } catch (error) {
-      console.error('导出失败:', error);
-      message.error('导出失败');
-    }
-  };
 
   return (
     <div style={{ padding: '24px', backgroundColor: '#f0f2f5' }}>
@@ -222,11 +96,19 @@ const Dashboard = () => {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>今日考勤概览</h2>
+          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>考勤概览</h2>
           <div style={{ display: 'flex', gap: '12px' }}>
             <DatePicker
-              value={moment(selectedDate)}
-              onChange={(date) => setSelectedDate(date ? date.format('YYYY-MM-DD') : moment().format('YYYY-MM-DD'))}
+              value={selectedDate ? dayjs(selectedDate) : dayjs()}
+              onChange={(date) => {
+                if (date) {
+                  setSelectedDate(date.format('YYYY-MM-DD'));
+                } else {
+                  setSelectedDate(dayjs().format('YYYY-MM-DD'));
+                }
+              }}
+              format="YYYY-MM-DD"
+              allowClear={false}
               style={{ borderRadius: '5px' }}
             />
           </div>
@@ -234,7 +116,7 @@ const Dashboard = () => {
         
         {/* KPI卡片区域 */}
         <Row gutter={20} style={{ marginBottom: '32px' }}>
-          <Col span={6}>
+          <Col span={8}>
             <Card 
               style={{ 
                 borderTop: '3px solid #4CAF50',
@@ -251,24 +133,7 @@ const Dashboard = () => {
               />
             </Card>
           </Col>
-          <Col span={6}>
-            <Card 
-              style={{ 
-                borderTop: '3px solid #FF6B6B',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                borderRadius: '8px'
-              }}
-            >
-              <Statistic
-                title="异常预警"
-                value={stats?.abnormal_attendance || 0}
-                suffix="例"
-                valueStyle={{ color: '#FF6B6B', fontSize: '24px', fontWeight: 'bold' }}
-                prefix={<Icon icon="ant-design:alert-outlined" style={{ color: '#FF6B6B' }} />}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
+          <Col span={8}>
             <Card 
               style={{ 
                 borderTop: '3px solid #2C5EFF',
@@ -284,7 +149,7 @@ const Dashboard = () => {
               />
             </Card>
           </Col>
-          <Col span={6}>
+          <Col span={8}>
             <Card 
               style={{ 
                 borderTop: '3px solid #FFC107',
@@ -293,58 +158,31 @@ const Dashboard = () => {
               }}
             >
               <Statistic
-                title="迟到早退"
-                value={stats?.abnormal_attendance || 0}
-                suffix="例"
+                title="总员工数"
+                value={stats?.total_employees || 0}
                 valueStyle={{ color: '#FFC107', fontSize: '24px', fontWeight: 'bold' }}
-                prefix={<Icon icon="ant-design:clock-circle-outlined" style={{ color: '#FFC107' }} />}
+                prefix={<Icon icon="ant-design:user-outlined" style={{ color: '#FFC107' }} />}
               />
             </Card>
           </Col>
         </Row>
+
         
-        {/* 图表区域 */}
-        <Row gutter={20} style={{ marginBottom: '32px' }}>
-          <Col span={24}>
-            <Card title="异常类型分布" style={{ height: '400px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}>
-               <div 
-                 id="exceptionChart" 
-                 style={{ height: '320px', width: '100%' }}
-               ></div>
-             </Card>
-          </Col>
-        </Row>
-        
-        {/* 异常记录表格 */}
+        {/* 考勤记录表格 */}
         <Card 
-          title="今日异常记录"
-          extra={
-            <Button 
-              type="primary" 
-              style={{ backgroundColor: '#2C5EFF', borderRadius: '5px' }}
-              onClick={handleExportReport}
-            >
-              导出报表
-            </Button>
-          }
+          title="今日考勤记录"
           style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}
         >
           <Table
-            dataSource={exceptionRecords}
-            columns={getExceptionColumns()}
+            dataSource={attendanceRecords}
+            columns={getAttendanceColumns()}
             pagination={{ pageSize: 10 }}
             loading={loading}
             rowKey="record_id"
           />
         </Card>
       </Card>
-      
-      <ExceptionDetailModal
-        open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
-        recordId={selectedRecordId}
-        onStatusUpdate={handleStatusUpdate}
-      />
+
     </div>
   );
 };

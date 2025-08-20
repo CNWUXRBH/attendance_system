@@ -2,10 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import Dashboard from '../pages/Dashboard';
 import Employee from '../pages/employee/Employee';
 import Attendance from '../pages/attendance/Attendance';
-import Schedule from '../pages/schedule/Schedule';
-import TemplateManagement from '../pages/schedule/TemplateManagement';
 import Report from '../pages/report/Report';
-import Exception from '../pages/exception/Exception';
 import Profile from '../pages/my/Profile';
 import Settings from '../pages/my/Settings';
 import Layout from '../layout';
@@ -30,20 +27,8 @@ const router = createBrowserRouter([
         element: <Attendance />,
       },
       {
-        path: '/schedule',
-        element: <Schedule />,
-      },
-      {
-        path: '/schedule/templates',
-        element: <TemplateManagement />,
-      },
-      {
         path: '/report',
         element: <Report />,
-      },
-      {
-        path: '/exception',
-        element: <Exception />,
       },
 
       {

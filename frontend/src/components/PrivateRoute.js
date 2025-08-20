@@ -18,7 +18,7 @@ const PrivateRoute = ({ children }) => {
 
       try {
         // 验证token是否有效
-        const response = await fetch('http://localhost:8000/api/my/profile', {
+        const response = await fetch('http://localhost:3001/api/my/profile', {
           headers: {
             'Authorization': `Bearer ${token}`
           }

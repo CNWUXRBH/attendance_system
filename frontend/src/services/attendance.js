@@ -53,12 +53,7 @@ export async function exportAttendanceRecords(params) {
   });
 }
 
-export async function syncExternalAttendance() {
-  return request({
-    url: '/api/attendance/sync-external',
-    method: 'POST'
-  });
-}
+
 
 // 更新考勤记录处理状态
 export async function updateAttendanceStatus(recordId, processStatus, remarks) {

@@ -5,7 +5,7 @@ pymysql
 SQLAlchemy
 pydantic
 python-jose[cryptography]
-passlib[bcrypt]
+passlib[bcrypt]>=1.7.4
 pandas
 openpyxl
 python-multipart
@@ -13,5 +13,3 @@ pydantic-settings
 xlsxwriter
 pyodbc
 python-dotenv
-requests
-schedule

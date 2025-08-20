@@ -134,8 +134,8 @@ const Report = () => {
             <RangePicker onChange={(dates) => handleFilterChange('dates', dates)} />
             <Select placeholder="选择报表类型" style={{ width: 200 }} onChange={(value) => handleFilterChange('type', value)} allowClear>
               <Option value="monthly">月度报表</Option>
-              <Option value="quarterly">季度报表</Option>
-              <Option value="annual">年度报表</Option>
+              <Option value="exception">异常报表</Option>
+              <Option value="attendance_rate">出勤率报表</Option>
             </Select>
             <Button type="primary" onClick={handleGenerateReport}>生成报表</Button>
           </Space>

@@ -50,6 +50,8 @@ class AttendanceRecordResponse(BaseModel):
     location: Optional[str] = None
     process_status: Optional[str] = None
     remarks: Optional[str] = None
+    workHours: Optional[str] = None
+    overtimeHours: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

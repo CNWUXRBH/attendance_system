@@ -12,7 +12,7 @@ class SyncLog(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     sync_type = Column(String(50), nullable=False, comment="同步类型，如：attendance_records")
     sync_source = Column(String(100), nullable=False, comment="同步数据源，如：MSSQL_AttendanceDB")
-    sync_date = Column(String(10), nullable=False, comment="同步的数据日期，格式：YYYY-MM-DD")
+    sync_date = Column(String(50), nullable=False, comment="同步的数据日期，格式：YYYY-MM-DD 或日期范围")
     employee_no = Column(String(50), nullable=True, comment="员工工号，如果是按员工同步")
     sync_status = Column(String(20), nullable=False, default="processing", comment="同步状态：processing, success, failed")
     records_count = Column(Integer, default=0, comment="同步的记录数量")
