@@ -22,24 +22,46 @@ Base.metadata.create_all(bind=engine)
 def create_initial_admin():
     db = SessionLocal()
     try:
-        # 检查是否已存在管理员账户（使用实际的员工编号）
-        admin_user = employee_service.get_employee_by_employee_no(db, "W4169")
-        if not admin_user:
-            admin_employee = EmployeeCreate(
-                employee_no="admin",
-                name="系统管理员",
-                password="admin123",
-                gender="M",
-                phone="13800138000",
-                email="admin@company.com",
-                position="系统管理员",
-                hire_date=date.today(),
-                is_admin=True
-            )
-            employee_service.create_employee(db, admin_employee)
-            print("初始管理员账户创建成功")
-        else:
+        # 优先按管理员账号 employee_no="admin" 检查
+        admin_user = employee_service.get_employee_by_employee_no(db, "admin")
+        if admin_user:
+            # 确保拥有管理员权限
+            if not admin_user.is_admin:
+                admin_user.is_admin = True
+                db.commit()
             print("管理员账户已存在，跳过创建")
+            return
+
+        # 若不存在admin账号，但已有相同邮箱用户，则复用该用户并升级为管理员
+        existing_by_email = db.query(employee.Employee).filter(
+            employee.Employee.email == "admin@company.com"
+        ).first()
+        if existing_by_email:
+            existing_by_email.employee_no = "admin"
+            existing_by_email.is_admin = True
+            db.commit()
+            # 重置密码为默认管理员密码
+            employee_service.update_employee_password(db, existing_by_email.employee_id, "admin123")
+            print("已将现有邮箱 admin@company.com 的用户升级为管理员并设置账号为 admin")
+            return
+
+        # 两者都不存在时，新建管理员
+        admin_employee = EmployeeCreate(
+            employee_no="admin",
+            name="系统管理员",
+            password="admin123",
+            gender="M",
+            phone="13800138000",
+            email="admin@company.com",
+            position="系统管理员",
+            hire_date=date.today(),
+            is_admin=True
+        )
+        employee_service.create_employee(db, admin_employee)
+        print("初始管理员账户创建成功")
+    except Exception as e:
+        db.rollback()
+        print(f"初始化管理员失败: {str(e)}")
     finally:
         db.close()
 

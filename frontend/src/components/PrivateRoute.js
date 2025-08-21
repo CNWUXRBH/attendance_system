@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Spin } from 'antd';
+import request from '../utils/request';
 
 const PrivateRoute = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
@@ -17,17 +18,14 @@ const PrivateRoute = ({ children }) => {
       }
 
       try {
-        // 验证token是否有效
-        const response = await fetch('http://localhost:3001/api/my/profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+        // 使用统一的请求实例，并走相对路径以兼容 Docker/Nginx 反向代理
+        const data = await request({
+          url: '/api/my/profile',
+          method: 'GET'
         });
-        
-        if (response.ok) {
+        if (data) {
           setIsAuthenticated(true);
         } else {
-          // token无效，清除localStorage
           localStorage.removeItem('token');
           setIsAuthenticated(false);
         }

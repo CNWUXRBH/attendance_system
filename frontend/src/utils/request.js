@@ -14,8 +14,11 @@ const ERROR_MESSAGES = {
   504: '网关超时'
 };
 
+// 在生产环境默认走同源（由Nginx将 /api 反代到后端）；开发环境默认直连本地后端
+const computedBaseURL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '');
+
 const instance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001',
+  baseURL: computedBaseURL,
   timeout: 300000,
 });
 
