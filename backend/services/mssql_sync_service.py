@@ -509,6 +509,11 @@ class MSSQLSyncService:
         1. 12H白班：7:00-19:00，迟到线7:30，早退线19:00
         2. 8H班：8:45-17:15，迟到线9:00，早退线17:15
         3. 12H夜班：19:00-7:00，迟到线19:30，早退线7:00
+        
+        弹性工作规则：
+        - 如果员工早到，可以提前下班，但工作时长必须满足对应班制的最低要求
+        - 12H班制：最低工作时长12小时
+        - 8H班制：最低工作时长8小时
         """
         clock_in_time = record.get('clock_in_time')
         clock_out_time = record.get('clock_out_time')
@@ -571,12 +576,20 @@ class MSSQLSyncService:
         """
         检查12小时白班考勤状态 (7:00-19:00)
         迟到线：7:30，早退线：19:00
+        弹性工作规则：如果员工早到，可以提前下班，但工作时长必须>=12小时
         """
+        # 计算工作时长（小时）
+        work_duration = (clock_out_time - clock_in_time).total_seconds() / 3600
+        
         # 迟到判断：7:30之后
         is_late = (clock_in_time.hour > 7) or (clock_in_time.hour == 7 and clock_in_time.minute > 30)
         
         # 早退判断：19:00之前
         is_early = clock_out_time.hour < 19
+        
+        # 弹性工作时间判断：如果工作时长>=12小时，即使提前下班也算正常
+        if is_early and work_duration >= 12:
+            is_early = False  # 满足工作时长要求，不算早退
         
         if is_late and is_early:
             return "迟到早退"
@@ -591,12 +604,20 @@ class MSSQLSyncService:
         """
         检查8小时班考勤状态 (8:45-17:15)
         迟到线：9:00，早退线：17:15
+        弹性工作规则：如果员工早到，可以提前下班，但工作时长必须>=8小时
         """
+        # 计算工作时长（小时）
+        work_duration = (clock_out_time - clock_in_time).total_seconds() / 3600
+        
         # 迟到判断：9:00之后
         is_late = (clock_in_time.hour > 9) or (clock_in_time.hour == 9 and clock_in_time.minute > 0)
         
         # 早退判断：17:15之前
         is_early = (clock_out_time.hour < 17) or (clock_out_time.hour == 17 and clock_out_time.minute < 15)
+        
+        # 弹性工作时间判断：如果工作时长>=8小时，即使提前下班也算正常
+        if is_early and work_duration >= 8:
+            is_early = False  # 满足工作时长要求，不算早退
         
         if is_late and is_early:
             return "迟到早退"
@@ -611,7 +632,14 @@ class MSSQLSyncService:
         """
         检查12小时夜班考勤状态 (19:00-7:00)
         迟到线：19:30，早退线：7:00
+        弹性工作规则：如果员工早到，可以提前下班，但工作时长必须>=12小时
         """
+        # 计算工作时长（小时）- 夜班需要考虑跨日期
+        if clock_out_time < clock_in_time:  # 跨日期情况
+            work_duration = (clock_out_time + timedelta(days=1) - clock_in_time).total_seconds() / 3600
+        else:
+            work_duration = (clock_out_time - clock_in_time).total_seconds() / 3600
+        
         # 夜班迟到判断：19:30之后
         is_late = False
         if clock_in_time.hour > 19 or (clock_in_time.hour == 19 and clock_in_time.minute > 30):
@@ -621,6 +649,10 @@ class MSSQLSyncService:
         is_early = False
         if clock_out_time.hour < 7:
             is_early = True
+        
+        # 弹性工作时间判断：如果工作时长>=12小时，即使提前下班也算正常
+        if is_early and work_duration >= 12:
+            is_early = False  # 满足工作时长要求，不算早退
         
         if is_late and is_early:
             return "迟到早退"
