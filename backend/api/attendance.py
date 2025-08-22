@@ -52,9 +52,13 @@ def export_attendance_records(db: Session = Depends(get_db)):
 
 @router.post("/import")
 async def import_attendance_records(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    if not file.filename.endswith('.xlsx'):
+        raise HTTPException(status_code=400, detail="Invalid file format. Please upload an Excel file.")
+    
     try:
-        result = await attendance_service.import_records_from_excel(db, file)
-        return result
+        contents = await file.read()
+        count = attendance_service.import_records_from_file(db, contents)
+        return {"message": f"{count} attendance records imported successfully."}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

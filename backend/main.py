@@ -155,7 +155,19 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "success": False,
             "message": "请求参数验证失败",
-            "errors": exc.errors()
+            "errors": [str(error) for error in exc.errors()]
+        }
+    )
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    """ValueError异常处理器"""
+    logger.error(f"ValueError: {str(exc)}")
+    return JSONResponse(
+        status_code=400,
+        content={
+            "success": False,
+            "message": str(exc)
         }
     )
 

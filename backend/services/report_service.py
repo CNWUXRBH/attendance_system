@@ -71,7 +71,7 @@ def export_detailed_report_to_excel(report_data):
     output = BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
     df.to_excel(writer, index=False, sheet_name='Detailed Report')
-    writer.close()
+    writer.save()
     output.seek(0)
     return output
 

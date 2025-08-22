@@ -38,10 +38,7 @@ export const importAttendanceRecords = (file) => {
   return request({
     method: 'POST',
     url: '/attendance/import',
-    data: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+    data: formData
   });
 };
 

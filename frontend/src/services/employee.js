@@ -31,17 +31,11 @@ export const deleteEmployee = (id) => {
   });
 };
 
-export const importEmployees = (file) => {
-  const formData = new FormData();
-  formData.append('file', file);
-  
+export const importEmployees = (formData) => {
   return request({
     method: 'POST',
     url: '/employees/import',
-    data: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+    data: formData
   });
 };
 

@@ -200,7 +200,7 @@ def export_records_to_excel(db: Session):
     output = BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
     df.to_excel(writer, index=False, sheet_name='Attendance Records')
-    writer.close()
+    writer.save()
     output.seek(0)
     
     return output

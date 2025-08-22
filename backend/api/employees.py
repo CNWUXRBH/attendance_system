@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
 from fastapi.responses import StreamingResponse
+from urllib.parse import quote
 
 from database.database import get_db
 from schemas import employee as employee_schema
@@ -19,10 +20,25 @@ def export_employees(db: Session = Depends(get_db)):
     if output is None:
         raise HTTPException(status_code=404, detail="No employees to export.")
     
+    # 中文文件名
+    filename = "员工信息.xlsx"
+    encoded_filename = quote(filename.encode('utf-8'))
+    
+    # 获取文件内容
+    output.seek(0)
+    file_content = output.getvalue()
+    
+    # 创建生成器函数
+    def generate():
+        yield file_content
+    
     return StreamingResponse(
-        output,
+        generate(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=employees.xlsx"}
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+            "Content-Length": str(len(file_content))
+        }
     )
 
 @router.get("/", response_model=List[employee_schema.Employee])

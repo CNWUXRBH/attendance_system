@@ -64,6 +64,11 @@ instance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
+    // 如果是FormData，删除Content-Type让浏览器自动设置
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+    
     // 添加请求时间戳，用于调试
     if (process.env.NODE_ENV === 'development') {
       config.metadata = { startTime: new Date() };
@@ -83,11 +88,12 @@ instance.interceptors.response.use(
     if (process.env.NODE_ENV === 'development') {
       const duration = new Date() - response.config.metadata?.startTime;
       console.log(`API响应 [${response.config.method?.toUpperCase()}] ${response.config.url}:`, {
-        data: response.data,
+        data: response.config.responseType === 'blob' ? '[Blob Data]' : response.data,
         duration: `${duration}ms`
       });
     }
-    return response.data;
+    // 对于blob类型的响应，返回完整的response对象，其他情况返回data
+    return response.config.responseType === 'blob' ? response : response.data;
   },
   async error => {
     // 尝试重试
