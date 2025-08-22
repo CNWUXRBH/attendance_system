@@ -1,75 +1,78 @@
 import request from '../utils/request';
 
-export async function getAttendanceRecords(params) {
+export const getAttendanceRecords = (params) => {
   return request({
-    url: '/api/attendance',
     method: 'GET',
-    params: params
+    url: '/attendance',
+    params
   });
-}
+};
 
-export async function addAttendanceRecord(data) {
+export const createAttendanceRecord = (data) => {
   return request({
-    url: '/api/attendance',
     method: 'POST',
-    data: data
+    url: '/attendance',
+    data
   });
-}
+};
 
-export async function updateAttendanceRecord(recordId, data) {
+export const updateAttendanceRecord = (recordId, data) => {
   return request({
-    url: `/api/attendance/${recordId}`,
     method: 'PUT',
-    data: data
+    url: `/attendance/${recordId}`,
+    data
   });
-}
+};
 
-export async function deleteAttendanceRecord(recordId) {
+export const deleteAttendanceRecord = (recordId) => {
   return request({
-    url: `/api/attendance/${recordId}`,
-    method: 'DELETE'
+    method: 'DELETE',
+    url: `/attendance/${recordId}`
   });
-}
+};
 
-export async function importAttendanceRecords(file) {
+export const importAttendanceRecords = (file) => {
   const formData = new FormData();
   formData.append('file', file);
+  
   return request({
-    url: '/api/attendance/import',
     method: 'POST',
+    url: '/attendance/import',
     data: formData,
     headers: {
-      'Content-Type': 'multipart/form-data',
+      'Content-Type': 'multipart/form-data'
     }
   });
-}
+};
 
-export async function exportAttendanceRecords(params) {
+export const exportAttendanceRecords = (params) => {
   return request({
-    url: '/api/attendance/export',
     method: 'GET',
-    params: params,
+    url: '/attendance/export',
+    params,
     responseType: 'blob'
   });
-}
+};
 
-
-
-// 更新考勤记录处理状态
-export async function updateAttendanceStatus(recordId, processStatus, remarks) {
+export const getAttendanceStats = (params) => {
   return request({
-    url: `/api/attendance/${recordId}/process-status`,
-    method: 'PATCH',
-    params: {
-      process_status: processStatus,
-      remarks: remarks
-    }
+    method: 'GET',
+    url: '/attendance/stats',
+    params
   });
-}
+};
 
-export async function getAttendanceRecordDetail(recordId) {
+export const processAttendanceStatus = (recordId, status) => {
   return request({
-    url: `/api/attendance/${recordId}`,
-    method: 'GET'
+    method: 'PUT',
+    url: `/attendance/${recordId}/process-status`,
+    data: { status }
   });
-}
+};
+
+export const getAttendanceRecord = (recordId) => {
+  return request({
+    method: 'GET',
+    url: `/attendance/${recordId}`
+  });
+};

@@ -1,47 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Spin } from 'antd';
 import request from '../utils/request';
 
 const PrivateRoute = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        setIsAuthenticated(false);
-        setLoading(false);
-        return;
-      }
-
       try {
-        // 使用统一的请求实例，并走相对路径以兼容 Docker/Nginx 反向代理
-        const data = await request({
-          url: '/api/my/profile',
-          method: 'GET'
-        });
-        if (data) {
-          setIsAuthenticated(true);
-        } else {
-          localStorage.removeItem('token');
+        const token = localStorage.getItem('token');
+        if (!token) {
           setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
         }
+
+        // 验证token有效性
+        await request('/my/profile');
+        setIsAuthenticated(true);
       } catch (error) {
-        // 网络错误或服务器未启动，清除token
+        console.error('认证检查失败:', error);
         localStorage.removeItem('token');
         setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setLoading(false);
     };
 
     checkAuth();
   }, []);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -50,11 +42,16 @@ const PrivateRoute = ({ children }) => {
         height: '100vh' 
       }}>
         <Spin size="large" />
+        <div style={{ marginTop: 16, color: '#666' }}>正在验证身份...</div>
       </div>
     );
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
 };
 
 export default PrivateRoute;

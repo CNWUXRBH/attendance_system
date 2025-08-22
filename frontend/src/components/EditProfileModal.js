@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, Button, message } from 'antd';
-import { updateMyProfile } from '../services/my';
+import { updateProfile } from '../services/my';
 
 
 const EditProfileModal = ({ open, onCancel, onSuccess, initialData }) => {
@@ -26,7 +26,7 @@ const EditProfileModal = ({ open, onCancel, onSuccess, initialData }) => {
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
-      await updateMyProfile(values);
+      await updateProfile(values);
       message.success('个人信息更新成功！');
       form.resetFields();
       onSuccess();

@@ -1,16 +1,16 @@
 import request from '../utils/request';
 
-export async function login(data) {
+export const login = (credentials) => {
   return request({
-    url: '/api/auth/login',
     method: 'POST',
-    data: data
+    url: '/auth/login',
+    data: credentials
   });
-}
+};
 
-export async function getInfo() {
+export const getCurrentUser = () => {
   return request({
-    url: '/api/employees/me',
-    method: 'GET'
+    method: 'GET',
+    url: '/employees/me'
   });
-}
+};

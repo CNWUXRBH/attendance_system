@@ -560,13 +560,13 @@ class MSSQLSyncService:
         if in_hour >= 18 or (in_hour < 12 and out_hour < 12 and work_duration > 10):
             return "12H_NIGHT"
         
-        # 8小时班：上班时间在8:00-10:00之间，下班时间在16:00-18:30之间，工作时长7-9小时
-        elif (8 <= in_hour <= 10) and (16 <= out_hour <= 18) and (7 <= work_duration <= 9):
-            return "8H"
-        
         # 12小时白班：上班时间在6:00-8:00之间，或工作时长10小时以上
         elif (6 <= in_hour <= 8) or work_duration >= 10:
             return "12H_DAY"
+        
+        # 8小时班：上班时间在8:00-10:00之间，工作时长7-9小时
+        elif (8 <= in_hour <= 10) and (7 <= work_duration <= 9):
+            return "8H"
         
         # 默认按8小时班处理
         else:
@@ -576,7 +576,7 @@ class MSSQLSyncService:
         """
         检查12小时白班考勤状态 (7:00-19:00)
         迟到线：7:30，早退线：19:00
-        弹性工作规则：如果员工早到，可以提前下班，但工作时长必须>=12小时
+        弹性工作规则：如果工作时长>=12小时，即使提前下班也算正常
         """
         # 计算工作时长（小时）
         work_duration = (clock_out_time - clock_in_time).total_seconds() / 3600
@@ -591,6 +591,10 @@ class MSSQLSyncService:
         if is_early and work_duration >= 12:
             is_early = False  # 满足工作时长要求，不算早退
         
+        # 如果工作时长>=12小时，且没有迟到，则算正常
+        if work_duration >= 12 and not is_late:
+            return "正常"
+        
         if is_late and is_early:
             return "迟到早退"
         elif is_late:
@@ -604,7 +608,7 @@ class MSSQLSyncService:
         """
         检查8小时班考勤状态 (8:45-17:15)
         迟到线：9:00，早退线：17:15
-        弹性工作规则：如果员工早到，可以提前下班，但工作时长必须>=8小时
+        弹性工作规则：如果工作时长>=8小时，即使提前下班也算正常
         """
         # 计算工作时长（小时）
         work_duration = (clock_out_time - clock_in_time).total_seconds() / 3600
@@ -619,6 +623,10 @@ class MSSQLSyncService:
         if is_early and work_duration >= 8:
             is_early = False  # 满足工作时长要求，不算早退
         
+        # 如果工作时长>=8小时，且没有迟到，则算正常
+        if work_duration >= 8 and not is_late:
+            return "正常"
+        
         if is_late and is_early:
             return "迟到早退"
         elif is_late:
@@ -632,7 +640,7 @@ class MSSQLSyncService:
         """
         检查12小时夜班考勤状态 (19:00-7:00)
         迟到线：19:30，早退线：7:00
-        弹性工作规则：如果员工早到，可以提前下班，但工作时长必须>=12小时
+        弹性工作规则：如果工作时长>=12小时，即使提前下班也算正常
         """
         # 计算工作时长（小时）- 夜班需要考虑跨日期
         if clock_out_time < clock_in_time:  # 跨日期情况
@@ -653,6 +661,10 @@ class MSSQLSyncService:
         # 弹性工作时间判断：如果工作时长>=12小时，即使提前下班也算正常
         if is_early and work_duration >= 12:
             is_early = False  # 满足工作时长要求，不算早退
+        
+        # 如果工作时长>=12小时，且没有迟到，则算正常
+        if work_duration >= 12 and not is_late:
+            return "正常"
         
         if is_late and is_early:
             return "迟到早退"

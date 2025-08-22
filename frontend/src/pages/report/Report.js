@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, DatePicker, Select, Button, Space, message } from 'antd';
-import { getReports, generateReport } from '../../services/report';
+import { getReports, createReport } from '../../services/report';
 import request from '../../utils/request';
 
 const { RangePicker } = DatePicker;
@@ -35,7 +35,7 @@ const Report = () => {
         start_date: filters.dates && filters.dates[0] ? filters.dates[0].format('YYYY-MM-DD') : '2025-01-01',
         end_date: filters.dates && filters.dates[1] ? filters.dates[1].format('YYYY-MM-DD') : '2025-12-31'
       };
-      await generateReport(reportData);
+      await createReport(reportData);
       fetchReports();
       message.success('报表生成成功');
     } catch (error) {
@@ -45,26 +45,27 @@ const Report = () => {
 
   const handleDownload = async (record) => {
     try {
-      const response = await request.get(`/api/reports/download/${record.id || 'default'}`, {
+      const response = await request.get(`/reports/download/${record.id || 'default'}`, {
         responseType: 'blob'
       });
       const url = window.URL.createObjectURL(new Blob([response]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `报表_${record.name || 'default'}.xlsx`);
+      link.setAttribute('download', `report_${record.id || 'default'}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      message.success('下载成功');
+      message.success('报表下载成功');
     } catch (error) {
-      message.error('下载失败');
+      console.error('下载失败:', error);
+      message.error('下载失败，请稍后重试');
     }
   };
 
   const handleView = async (record) => {
     try {
-      const result = await request.get(`/api/reports/view/${record.id || 'default'}`);
+      const result = await request.get(`/reports/view/${record.id || 'default'}`);
       if (result.success) {
         message.success('报表详情获取成功');
         // 这里可以打开一个模态框显示详情
@@ -80,21 +81,22 @@ const Report = () => {
     try {
       const startDate = filters.dates && filters.dates[0] ? filters.dates[0].format('YYYY-MM-DD') : '2025-01-01';
       const endDate = filters.dates && filters.dates[1] ? filters.dates[1].format('YYYY-MM-DD') : '2025-12-31';
-      const response = await request.get('/api/reports/export_detailed', {
+      const response = await request.get('/reports/export_detailed', {
         params: { start_date: startDate, end_date: endDate },
         responseType: 'blob'
       });
       const url = window.URL.createObjectURL(new Blob([response]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `详细报表_${startDate}_${endDate}.xlsx`);
+      link.setAttribute('download', `attendance_report_${startDate}_${endDate}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
       message.success('导出成功');
     } catch (error) {
-      message.error('导出失败');
+      console.error('导出失败:', error);
+      message.error('导出失败，请稍后重试');
     }
   };
 
@@ -141,7 +143,11 @@ const Report = () => {
           </Space>
           <Button onClick={handleExport}>导出</Button>
         </div>
-        <Table columns={columns} dataSource={data} rowKey="id" />
+        <Table 
+          columns={columns} 
+          dataSource={data} 
+          rowKey={(record) => record.id || record.report_id || Math.random().toString(36).substr(2, 9)} 
+        />
       </div>
     </div>
   );

@@ -14,13 +14,47 @@ const ERROR_MESSAGES = {
   504: '网关超时'
 };
 
-// 在生产环境默认走同源（由Nginx将 /api 反代到后端）；开发环境默认直连本地后端
-const computedBaseURL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '');
-
+// 创建axios实例
 const instance = axios.create({
-  baseURL: computedBaseURL,
-  timeout: 300000,
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001',
+  timeout: 30000, // 30秒超时
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
+
+// 重试配置
+const retryConfig = {
+  retries: 2,
+  retryDelay: 1000,
+  retryCondition: (error) => {
+    return axios.isAxiosError(error) && 
+           (error.code === 'ECONNABORTED' || 
+            error.response?.status >= 500);
+  }
+};
+
+// 重试拦截器
+const retryInterceptor = async (error) => {
+  const { config } = error;
+  
+  if (!config || !retryConfig.retryCondition(error)) {
+    return Promise.reject(error);
+  }
+  
+  config.__retryCount = config.__retryCount || 0;
+  
+  if (config.__retryCount >= retryConfig.retries) {
+    return Promise.reject(error);
+  }
+  
+  config.__retryCount += 1;
+  
+  // 延迟重试
+  await new Promise(resolve => setTimeout(resolve, retryConfig.retryDelay * config.__retryCount));
+  
+  return instance(config);
+};
 
 // 请求拦截器 - 添加认证token
 instance.interceptors.request.use(
@@ -29,6 +63,12 @@ instance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // 添加请求时间戳，用于调试
+    if (process.env.NODE_ENV === 'development') {
+      config.metadata = { startTime: new Date() };
+    }
+    
     return config;
   },
   error => {
@@ -41,11 +81,22 @@ instance.interceptors.response.use(
   response => {
     // 开发环境下显示API响应日志
     if (process.env.NODE_ENV === 'development') {
-      console.log('API响应:', response.data);
+      const duration = new Date() - response.config.metadata?.startTime;
+      console.log(`API响应 [${response.config.method?.toUpperCase()}] ${response.config.url}:`, {
+        data: response.data,
+        duration: `${duration}ms`
+      });
     }
     return response.data;
   },
-  error => {
+  async error => {
+    // 尝试重试
+    try {
+      return await retryInterceptor(error);
+    } catch (retryError) {
+      error = retryError;
+    }
+    
     console.error('API错误:', error);
     
     // 网络错误处理
@@ -77,6 +128,9 @@ instance.interceptors.response.use(
       case 403:
         message.error('权限不足，无法访问该资源');
         break;
+      case 429:
+        message.error('请求过于频繁，请稍后重试');
+        break;
       default:
         message.error(errorMessage);
     }
@@ -85,4 +139,12 @@ instance.interceptors.response.use(
   }
 );
 
+// 导出实例和工具函数
 export default instance;
+
+// 工具函数
+export const createRequest = (config) => instance(config);
+export const get = (url, config) => instance.get(url, config);
+export const post = (url, data, config) => instance.post(url, data, config);
+export const put = (url, data, config) => instance.put(url, data, config);
+export const del = (url, config) => instance.delete(url, config);

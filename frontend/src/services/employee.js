@@ -1,50 +1,55 @@
 import request from '../utils/request';
 
-export async function getEmployees() {
+export const getEmployees = (params) => {
   return request({
-    url: '/api/employees',
-    method: 'GET'
+    method: 'GET',
+    url: '/employees',
+    params
   });
-}
+};
 
-export async function addEmployee(data) {
+export const createEmployee = (data) => {
   return request({
-    url: '/api/employees',
     method: 'POST',
-    data: data
+    url: '/employees',
+    data
   });
-}
+};
 
-export async function updateEmployee(id, data) {
+export const updateEmployee = (id, data) => {
   return request({
-    url: `/api/employees/${id}`,
     method: 'PUT',
-    data: data
+    url: `/employees/${id}`,
+    data
   });
-}
+};
 
-export async function deleteEmployee(id) {
+export const deleteEmployee = (id) => {
   return request({
-    url: `/api/employees/${id}`,
-    method: 'DELETE'
+    method: 'DELETE',
+    url: `/employees/${id}`
   });
-}
+};
 
-export async function importEmployees(formData) {
+export const importEmployees = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
   return request({
-    url: '/api/employees/import',
     method: 'POST',
+    url: '/employees/import',
     data: formData,
     headers: {
-      'Content-Type': 'multipart/form-data',
+      'Content-Type': 'multipart/form-data'
     }
   });
-}
+};
 
-export async function exportEmployees() {
+export const exportEmployees = (params) => {
   return request({
-    url: '/api/employees/export',
     method: 'GET',
+    url: '/employees/export',
+    params,
     responseType: 'blob'
   });
-}
+};

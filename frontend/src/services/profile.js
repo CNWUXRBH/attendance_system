@@ -1,16 +1,16 @@
 import request from '../utils/request';
 
-export async function getProfile() {
+export const getProfile = () => {
   return request({
-    url: '/api/profile',
-    method: 'GET'
+    method: 'GET',
+    url: '/profile'
   });
-}
+};
 
-export async function updateProfile(data) {
+export const updateProfile = (data) => {
   return request({
-    url: '/api/profile',
     method: 'PUT',
-    data: data
+    url: '/profile',
+    data
   });
-}
+};

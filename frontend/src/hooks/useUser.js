@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMyProfile } from '../services/my';
+import { getProfile } from '../services/my';
 
 const useUser = () => {
   const [user, setUser] = useState(null);
@@ -7,7 +7,7 @@ const useUser = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await getMyProfile();
+        const response = await getProfile();
         setUser(response.data);
       } catch (error) {
         console.error('Failed to fetch user profile', error);

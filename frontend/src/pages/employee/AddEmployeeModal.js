@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, Form, Input, DatePicker, Select, message } from 'antd';
-import { addEmployee } from '../../services/employee';
+import { createEmployee } from '../../services/employee';
 
 const { Option } = Select;
 
@@ -16,7 +16,7 @@ const AddEmployeeModal = ({ open, onCancel, onSuccess }) => {
         hire_date: values.hire_date?.format('YYYY-MM-DD'),
         contract_end_date: values.contract_end_date?.format('YYYY-MM-DD'),
       };
-      await addEmployee(formattedValues);
+      await createEmployee(formattedValues);
       message.success('员工添加成功');
       form.resetFields();
       onSuccess();

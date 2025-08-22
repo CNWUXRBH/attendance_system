@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Avatar, Descriptions, Button, Spin, message } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
-import { getMyProfile } from '../../services/my';
+import { getProfile } from '../../services/my';
 import EditProfileModal from '../../components/EditProfileModal';
 
 const Profile = () => {
@@ -12,7 +12,7 @@ const Profile = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const result = await getMyProfile();
+      const result = await getProfile();
       setProfile(result.data || result);
     } catch (error) {
       console.error('获取个人信息失败:', error);

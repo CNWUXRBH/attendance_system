@@ -114,6 +114,49 @@ def test_mssql_connection():
         }
 
 
+@router.get("/test-attendance-status")
+def test_attendance_status(
+    clock_in_time: str,
+    clock_out_time: str,
+    db: Session = Depends(get_db)
+):
+    """
+    测试考勤状态判断逻辑
+    示例: /test-attendance-status?clock_in_time=2025-08-20T08:33:25&clock_out_time=2025-08-20T17:38:03
+    """
+    try:
+        from services.mssql_sync_service import mssql_sync_service
+        from datetime import datetime
+        
+        # 解析时间字符串
+        clock_in = datetime.fromisoformat(clock_in_time.replace('Z', '+00:00'))
+        clock_out = datetime.fromisoformat(clock_out_time.replace('Z', '+00:00'))
+        
+        # 计算工作时长
+        work_duration = (clock_out - clock_in).total_seconds() / 3600
+        
+        # 获取考勤状态
+        status = mssql_sync_service._calculate_attendance_status(clock_in, clock_out)
+        
+        # 识别班制类型
+        shift_type = mssql_sync_service._identify_shift_type(clock_in, clock_out)
+        
+        return {
+            "clock_in_time": clock_in.isoformat(),
+            "clock_out_time": clock_out.isoformat(),
+            "work_duration_hours": round(work_duration, 2),
+            "shift_type": shift_type,
+            "attendance_status": status,
+            "analysis": {
+                "is_late": clock_in.hour > 9 or (clock_in.hour == 9 and clock_in.minute > 0),
+                "is_early": (clock_out.hour < 17) or (clock_out.hour == 17 and clock_out.minute < 15),
+                "meets_work_hours": work_duration >= 8
+            }
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @router.get("/", response_model=List[attendance_record_schema.AttendanceRecordResponse])
 def read_attendance_records(
     skip: int = 0,

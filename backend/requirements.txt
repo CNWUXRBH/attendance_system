@@ -1,15 +1,32 @@
-fastapi
-uvicorn
-mysql-connector-python
-pymysql
-SQLAlchemy
-pydantic
-python-jose[cryptography]
+# Web框架
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# 数据库驱动
+mysql-connector-python>=8.0.0
+pymysql>=1.1.0
+pyodbc>=5.0.0
+
+# ORM和验证
+SQLAlchemy>=2.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# 认证和安全
+python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
-pandas
-openpyxl
-python-multipart
-pydantic-settings
-xlsxwriter
-pyodbc
-python-dotenv
+
+# 数据处理
+pandas>=2.0.0
+openpyxl>=3.1.0
+xlsxwriter>=3.1.0
+
+# 工具库
+python-multipart>=0.0.6
+python-dotenv>=1.0.0
+
+# 开发工具
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+flake8>=6.0.0

@@ -1,26 +1,26 @@
 import request from '../utils/request';
 
-export async function getReports(params) {
+export const getReports = (params) => {
   return request({
-    url: '/api/reports',
     method: 'GET',
-    params: params
+    url: '/reports',
+    params
   });
-}
+};
 
-export async function generateReport(data) {
+export const createReport = (data) => {
   return request({
-    url: '/api/reports',
     method: 'POST',
-    data: data
+    url: '/reports',
+    data
   });
-}
+};
 
-export async function exportExceptionRecords(params) {
+export const exportReport = (params) => {
   return request({
-    url: '/api/reports/export_detailed',
     method: 'GET',
-    params: params,
+    url: '/reports/export_detailed',
+    params,
     responseType: 'blob'
   });
-}
+};

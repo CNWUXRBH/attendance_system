@@ -1,12 +1,14 @@
-version: '3.8'
+# Docker Compose配置文件
 
 services:
   frontend:
     build:
       context: ../frontend
       dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://localhost/api
     ports:
-      - "3000:3000"
+      - "80:3000"
     depends_on:
       backend:
         condition: service_healthy
@@ -25,12 +27,12 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "8000:3001"
     depends_on:
       mysql:
         condition: service_healthy
     env_file:
-      - .env.production
+      - env.production
     restart: unless-stopped
     networks:
       - app-network

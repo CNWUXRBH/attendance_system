@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, DatePicker, TimePicker, Select, Button, message } from 'antd';
-import moment from 'moment';
-import { updateAttendanceRecord, addAttendanceRecord } from '../../services/attendance';
+import dayjs from 'dayjs';
+import { updateAttendanceRecord, createAttendanceRecord } from '../../services/attendance';
 import { getEmployees } from '../../services/employee';
 
 const { Option } = Select;
@@ -17,9 +17,9 @@ const AttendanceEditModal = ({ open, onCancel, onSuccess, record, isEdit = true 
       if (isEdit && record) {
         form.setFieldsValue({
           employee_id: record.employee_id,
-          date: record.date ? moment(record.date, 'YYYY-MM-DD') : null,
-          clock_in_time: record.checkIn ? moment(record.checkIn, 'HH:mm:ss') : null,
-          clock_out_time: record.checkOut ? moment(record.checkOut, 'HH:mm:ss') : null,
+          date: record.date ? dayjs(record.date, 'YYYY-MM-DD') : null,
+          clock_in_time: record.checkIn ? dayjs(record.checkIn, 'HH:mm:ss') : null,
+          clock_out_time: record.checkOut ? dayjs(record.checkOut, 'HH:mm:ss') : null,
           clock_type: record.clock_type,
           device_id: record.device_id,
           location: record.location,
@@ -47,9 +47,9 @@ const AttendanceEditModal = ({ open, onCancel, onSuccess, record, isEdit = true 
         employee_id: values.employee_id,
         date: values.date ? values.date.format('YYYY-MM-DD') : null,
         clock_in_time: values.date && values.clock_in_time ? 
-          moment(values.date.format('YYYY-MM-DD') + ' ' + values.clock_in_time.format('HH:mm:ss')).toISOString() : null,
+          dayjs(values.date.format('YYYY-MM-DD') + ' ' + values.clock_in_time.format('HH:mm:ss')).toISOString() : null,
         clock_out_time: values.date && values.clock_out_time ? 
-          moment(values.date.format('YYYY-MM-DD') + ' ' + values.clock_out_time.format('HH:mm:ss')).toISOString() : null,
+          dayjs(values.date.format('YYYY-MM-DD') + ' ' + values.clock_out_time.format('HH:mm:ss')).toISOString() : null,
         clock_type: values.clock_type,
         device_id: values.device_id,
         location: values.location,
@@ -60,7 +60,7 @@ const AttendanceEditModal = ({ open, onCancel, onSuccess, record, isEdit = true 
         await updateAttendanceRecord(record.record_id, submitData);
         message.success('考勤记录修改成功');
       } else {
-        await addAttendanceRecord(submitData);
+        await createAttendanceRecord(submitData);
         message.success('考勤记录添加成功');
       }
       

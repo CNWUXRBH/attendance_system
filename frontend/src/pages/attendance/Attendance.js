@@ -187,7 +187,11 @@ const Attendance = () => {
             <Button type="primary" onClick={handleSearch}>查询</Button>
           </Space>
         </div>
-        <Table columns={columns} dataSource={data} rowKey="id" />
+        <Table 
+          columns={columns} 
+          dataSource={data} 
+          rowKey={(record) => record.id || record.record_id || record.employee_id || Math.random().toString(36).substr(2, 9)} 
+        />
       </div>
       
 
