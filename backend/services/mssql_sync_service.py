@@ -437,13 +437,35 @@ class MSSQLSyncService:
                 sync_hash = self._generate_sync_hash(record)
                 
                 # 检查是否已经同步过
-                existing_record = db.query(SyncRecord).filter(
+                existing_sync_record = db.query(SyncRecord).filter(
                     SyncRecord.sync_hash == sync_hash
                 ).first()
                 
-                if existing_record:
-                    duplicates_skipped += 1
-                    logger.debug(f"记录已存在，跳过: {employee_no} - {record['attendance_date']}")
+                if existing_sync_record:
+                    # 找到对应的考勤记录
+                    existing_attendance_record = db.query(attendance_record_model.AttendanceRecord).filter(
+                        attendance_record_model.AttendanceRecord.employee_id == employee_map[employee_no],
+                        attendance_record_model.AttendanceRecord.clock_in_time == record.get('clock_in_time'),
+                        attendance_record_model.AttendanceRecord.clock_out_time == record.get('clock_out_time')
+                    ).first()
+                    
+                    if existing_attendance_record:
+                        # 重新计算状态
+                        new_status = self._determine_status(record)
+                        
+                        # 如果状态不一致，更新记录
+                        if existing_attendance_record.status != new_status:
+                            old_status = existing_attendance_record.status
+                            existing_attendance_record.status = new_status
+                            logger.info(f"更新考勤状态 - 员工: {employee_no}, 日期: {record['attendance_date']}, {old_status} -> {new_status}")
+                            records_count += 1  # 计入处理记录数
+                        else:
+                            duplicates_skipped += 1
+                            logger.debug(f"记录已存在且状态一致，跳过: {employee_no} - {record['attendance_date']}")
+                    else:
+                        duplicates_skipped += 1
+                        logger.debug(f"同步记录存在但考勤记录不存在，跳过: {employee_no} - {record['attendance_date']}")
+                    
                     continue
                 
                 # 创建考勤记录
@@ -556,19 +578,18 @@ class MSSQLSyncService:
         # 计算工作时长（小时）
         work_duration = (clock_out_time - clock_in_time).total_seconds() / 3600
         
-        # 12小时夜班：上班时间在18:00之后，或者工作时长跨夜（下班时间在次日上午）
-        if in_hour >= 18 or (in_hour < 12 and out_hour < 12 and work_duration > 10):
+        # 12小时夜班：上班时间在18:00之后
+        if in_hour >= 18:
             return "12H_NIGHT"
         
-        # 12小时白班：上班时间在6:00-8:00之间，或工作时长10小时以上
-        elif (6 <= in_hour <= 8) or work_duration >= 10:
-            return "12H_DAY"
+        # 12小时白班：上班时间在6:00-7:30之间，且工作时长>=10小时
+        elif (6 <= in_hour <= 7) or (in_hour == 7 and in_minute <= 30):
+            if work_duration >= 10:
+                return "12H_DAY"
+            else:
+                return "8H"  # 工作时长不足10小时按8小时班处理
         
-        # 8小时班：上班时间在8:00-10:00之间，工作时长7-9小时
-        elif (8 <= in_hour <= 10) and (7 <= work_duration <= 9):
-            return "8H"
-        
-        # 默认按8小时班处理
+        # 8小时班：默认情况，包括上班时间在8:00-10:00之间的所有情况
         else:
             return "8H"
     
@@ -576,24 +597,21 @@ class MSSQLSyncService:
         """
         检查12小时白班考勤状态 (7:00-19:00)
         迟到线：7:30，早退线：19:00
-        弹性工作规则：如果工作时长>=12小时，即使提前下班也算正常
+        弹性工作规则：如果工作时长>=12小时，直接返回正常；否则检查迟到早退
         """
         # 计算工作时长（小时）
         work_duration = (clock_out_time - clock_in_time).total_seconds() / 3600
         
+        # 如果工作时长>=12小时，直接返回正常，不检查迟到早退
+        if work_duration >= 12:
+            return "正常"
+        
+        # 工作时长不足12小时的情况，检查迟到早退
         # 迟到判断：7:30之后
         is_late = (clock_in_time.hour > 7) or (clock_in_time.hour == 7 and clock_in_time.minute > 30)
         
         # 早退判断：19:00之前
         is_early = clock_out_time.hour < 19
-        
-        # 弹性工作时间判断：如果工作时长>=12小时，即使提前下班也算正常
-        if is_early and work_duration >= 12:
-            is_early = False  # 满足工作时长要求，不算早退
-        
-        # 如果工作时长>=12小时，且没有迟到，则算正常
-        if work_duration >= 12 and not is_late:
-            return "正常"
         
         if is_late and is_early:
             return "迟到早退"
@@ -608,24 +626,21 @@ class MSSQLSyncService:
         """
         检查8小时班考勤状态 (8:45-17:15)
         迟到线：9:00，早退线：17:15
-        弹性工作规则：如果工作时长>=8小时，即使提前下班也算正常
+        弹性工作规则：如果工作时长>=8小时，直接返回正常；否则检查迟到早退
         """
         # 计算工作时长（小时）
         work_duration = (clock_out_time - clock_in_time).total_seconds() / 3600
         
+        # 如果工作时长>=8小时，直接返回正常，不检查迟到早退
+        if work_duration >= 8:
+            return "正常"
+        
+        # 工作时长不足8小时的情况，检查迟到早退
         # 迟到判断：9:00之后
         is_late = (clock_in_time.hour > 9) or (clock_in_time.hour == 9 and clock_in_time.minute > 0)
         
         # 早退判断：17:15之前
         is_early = (clock_out_time.hour < 17) or (clock_out_time.hour == 17 and clock_out_time.minute < 15)
-        
-        # 弹性工作时间判断：如果工作时长>=8小时，即使提前下班也算正常
-        if is_early and work_duration >= 8:
-            is_early = False  # 满足工作时长要求，不算早退
-        
-        # 如果工作时长>=8小时，且没有迟到，则算正常
-        if work_duration >= 8 and not is_late:
-            return "正常"
         
         if is_late and is_early:
             return "迟到早退"
@@ -640,7 +655,7 @@ class MSSQLSyncService:
         """
         检查12小时夜班考勤状态 (19:00-7:00)
         迟到线：19:30，早退线：7:00
-        弹性工作规则：如果工作时长>=12小时，即使提前下班也算正常
+        弹性工作规则：如果工作时长>=12小时，直接返回正常；否则检查迟到早退
         """
         # 计算工作时长（小时）- 夜班需要考虑跨日期
         if clock_out_time < clock_in_time:  # 跨日期情况
@@ -648,6 +663,11 @@ class MSSQLSyncService:
         else:
             work_duration = (clock_out_time - clock_in_time).total_seconds() / 3600
         
+        # 如果工作时长>=12小时，直接返回正常，不检查迟到早退
+        if work_duration >= 12:
+            return "正常"
+        
+        # 工作时长不足12小时的情况，检查迟到早退
         # 夜班迟到判断：19:30之后
         is_late = False
         if clock_in_time.hour > 19 or (clock_in_time.hour == 19 and clock_in_time.minute > 30):
@@ -657,14 +677,6 @@ class MSSQLSyncService:
         is_early = False
         if clock_out_time.hour < 7:
             is_early = True
-        
-        # 弹性工作时间判断：如果工作时长>=12小时，即使提前下班也算正常
-        if is_early and work_duration >= 12:
-            is_early = False  # 满足工作时长要求，不算早退
-        
-        # 如果工作时长>=12小时，且没有迟到，则算正常
-        if work_duration >= 12 and not is_late:
-            return "正常"
         
         if is_late and is_early:
             return "迟到早退"

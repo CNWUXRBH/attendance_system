@@ -21,8 +21,7 @@ def get_dashboard_stats(db: Session, date: str = None):
     )
     present_today = present_today.count()
     
-    # 计算出勤率
-    attendance_rate = round((present_today / total_employees * 100), 1) if total_employees > 0 else 0
+
     
     # 获取异常考勤数（指定日期迟到、早退等）
     abnormal_query = db.query(AttendanceRecord).filter(
@@ -49,7 +48,6 @@ def get_dashboard_stats(db: Session, date: str = None):
     return {
         "total_employees": total_employees,
         "present_today": present_today,
-        "attendance_rate": attendance_rate,
         "abnormal_attendance": abnormal_attendance,
         "pending_requests": pending_requests,
         "weekly_attendance": weekly_attendance

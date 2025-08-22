@@ -116,24 +116,7 @@ const Dashboard = () => {
         
         {/* KPI卡片区域 */}
         <Row gutter={20} style={{ marginBottom: '32px' }}>
-          <Col span={8}>
-            <Card 
-              style={{ 
-                borderTop: '3px solid #4CAF50',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                borderRadius: '8px'
-              }}
-            >
-              <Statistic
-                title="今日出勤率"
-                value={stats?.attendance_rate || 0}
-                suffix="%"
-                valueStyle={{ color: '#4CAF50', fontSize: '24px', fontWeight: 'bold' }}
-                prefix={<Icon icon="ant-design:trending-up-outlined" style={{ color: '#4CAF50' }} />}
-              />
-            </Card>
-          </Col>
-          <Col span={8}>
+          <Col span={12}>
             <Card 
               style={{ 
                 borderTop: '3px solid #2C5EFF',
@@ -149,7 +132,7 @@ const Dashboard = () => {
               />
             </Card>
           </Col>
-          <Col span={8}>
+          <Col span={12}>
             <Card 
               style={{ 
                 borderTop: '3px solid #FFC107',

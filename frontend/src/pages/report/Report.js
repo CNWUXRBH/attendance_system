@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Table, DatePicker, Select, Button, Space, message } from 'antd';
+import { Table, DatePicker, Button, Space, message, Modal, Descriptions } from 'antd';
 import { getReports, createReport } from '../../services/report';
 import request from '../../utils/request';
 
 const { RangePicker } = DatePicker;
-const { Option } = Select;
 
 const Report = () => {
   const [data, setData] = useState([]);
-  const [filters, setFilters] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    dates: null
+  });
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [viewData, setViewData] = useState(null);
 
   const fetchReports = async () => {
     const result = await getReports();
@@ -29,15 +33,29 @@ const Report = () => {
 
   const handleGenerateReport = async () => {
     try {
-      // 转换前端filters格式为后端期望的格式
-      const reportData = {
-        report_type: filters.type || 'monthly',
-        start_date: filters.dates && filters.dates[0] ? filters.dates[0].format('YYYY-MM-DD') : '2025-01-01',
-        end_date: filters.dates && filters.dates[1] ? filters.dates[1].format('YYYY-MM-DD') : '2025-12-31'
+      if (!filters.dates || !filters.dates[0] || !filters.dates[1]) {
+        message.error('请选择时间范围');
+        return;
+      }
+      
+      // 生成月度考勤报表
+      const monthlyReportData = {
+        report_type: 'monthly',
+        start_date: filters.dates[0].format('YYYY-MM-DD'),
+        end_date: filters.dates[1].format('YYYY-MM-DD')
       };
-      await createReport(reportData);
+      await createReport(monthlyReportData);
+      
+      // 生成异常考勤统计
+      const exceptionReportData = {
+        report_type: 'exception',
+        start_date: filters.dates[0].format('YYYY-MM-DD'),
+        end_date: filters.dates[1].format('YYYY-MM-DD')
+      };
+      await createReport(exceptionReportData);
+      
       fetchReports();
-      message.success('报表生成成功');
+      message.success('报表生成成功（包含月度考勤报表和异常考勤统计）');
     } catch (error) {
       message.error('报表生成失败');
     }
@@ -45,13 +63,14 @@ const Report = () => {
 
   const handleDownload = async (record) => {
     try {
-      const response = await request.get(`/reports/download/${record.id || 'default'}`, {
+      const reportId = record.id || record.report_id || 'default';
+      const response = await request.get(`/reports/download/${reportId}`, {
         responseType: 'blob'
       });
       const url = window.URL.createObjectURL(new Blob([response]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `report_${record.id || 'default'}.xlsx`);
+      link.setAttribute('download', `report_${reportId}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -65,14 +84,20 @@ const Report = () => {
 
   const handleView = async (record) => {
     try {
-      const result = await request.get(`/reports/view/${record.id || 'default'}`);
+      const reportId = record.id || record.report_id || 'default';
+      const result = await request.get(`/reports/view/${reportId}`);
       if (result.success) {
-        message.success('报表详情获取成功');
-        // 这里可以打开一个模态框显示详情
+        setViewData({
+          ...result,
+          reportName: record.name,
+          reportType: record.type
+        });
+        setViewModalVisible(true);
       } else {
         message.error('获取报表详情失败');
       }
     } catch (error) {
+      console.error('查看失败:', error);
       message.error('获取报表详情失败');
     }
   };
@@ -133,15 +158,10 @@ const Report = () => {
       <div className="bg-white p-6 rounded-lg shadow">
         <div className="flex justify-between mb-4">
           <Space>
-            <RangePicker onChange={(dates) => handleFilterChange('dates', dates)} />
-            <Select placeholder="选择报表类型" style={{ width: 200 }} onChange={(value) => handleFilterChange('type', value)} allowClear>
-              <Option value="monthly">月度报表</Option>
-              <Option value="exception">异常报表</Option>
-              <Option value="attendance_rate">出勤率报表</Option>
-            </Select>
+            <RangePicker onChange={(dates) => handleFilterChange('dates', dates)} placeholder={['开始日期', '结束日期']} />
             <Button type="primary" onClick={handleGenerateReport}>生成报表</Button>
           </Space>
-          <Button onClick={handleExport}>导出</Button>
+          <Button onClick={handleExport}>导出详细报表</Button>
         </div>
         <Table 
           columns={columns} 
@@ -149,6 +169,31 @@ const Report = () => {
           rowKey={(record) => record.id || record.report_id || Math.random().toString(36).substr(2, 9)} 
         />
       </div>
+      
+      <Modal
+        title="报表详情"
+        open={viewModalVisible}
+        onCancel={() => setViewModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setViewModalVisible(false)}>
+            关闭
+          </Button>
+        ]}
+        width={600}
+      >
+        {viewData && (
+          <Descriptions column={1} bordered>
+            <Descriptions.Item label="报表名称">{viewData.reportName}</Descriptions.Item>
+            <Descriptions.Item label="报表类型">{viewData.reportType === 'monthly' ? '月度考勤报表' : '异常考勤统计'}</Descriptions.Item>
+            <Descriptions.Item label="报表ID">{viewData.report_id}</Descriptions.Item>
+            <Descriptions.Item label="生成时间">{new Date(viewData.generated_at).toLocaleString('zh-CN')}</Descriptions.Item>
+            <Descriptions.Item label="状态">{viewData.status === 'completed' ? '已完成' : viewData.status}</Descriptions.Item>
+            <Descriptions.Item label="记录数量">{viewData.data?.records_count || 0} 条</Descriptions.Item>
+            <Descriptions.Item label="日期范围">{viewData.data?.date_range || '未指定'}</Descriptions.Item>
+            <Descriptions.Item label="摘要">{viewData.data?.summary || '无摘要'}</Descriptions.Item>
+          </Descriptions>
+        )}
+      </Modal>
     </div>
   );
 };

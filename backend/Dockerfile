@@ -34,8 +34,10 @@ WORKDIR /app
 COPY ./requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 创建非root用户
-RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
+# 创建非root用户和logs目录
+RUN adduser --disabled-password --gecos '' appuser && \
+    mkdir -p /app/logs && \
+    chown -R appuser:appuser /app
 USER appuser
 
 # 复制应用程序代码

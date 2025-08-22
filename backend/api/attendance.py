@@ -136,7 +136,11 @@ def test_attendance_status(
         work_duration = (clock_out - clock_in).total_seconds() / 3600
         
         # 获取考勤状态
-        status = mssql_sync_service._calculate_attendance_status(clock_in, clock_out)
+        record_dict = {
+            'clock_in_time': clock_in,
+            'clock_out_time': clock_out
+        }
+        status = mssql_sync_service._determine_status(record_dict)
         
         # 识别班制类型
         shift_type = mssql_sync_service._identify_shift_type(clock_in, clock_out)

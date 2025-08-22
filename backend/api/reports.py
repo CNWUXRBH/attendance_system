@@ -5,6 +5,7 @@ from datetime import datetime
 from database.database import get_db
 from services import report_service
 from fastapi.responses import StreamingResponse
+from urllib.parse import quote
 
 router = APIRouter()
 
@@ -53,42 +54,120 @@ def export_detailed_report(start_date: str, end_date: str, db: Session = Depends
 @router.get("/download/{report_id}")
 def download_report(report_id: str, db: Session = Depends(get_db)):
     """下载报表文件"""
-    # 这里可以根据report_id获取具体的报表数据并生成Excel文件
-    # 为了演示，我们生成一个简单的Excel文件
     import pandas as pd
     from io import BytesIO
+    from datetime import datetime, timedelta
     
-    # 创建示例数据
-    data = {
-        '报表ID': [report_id],
-        '生成时间': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
-        '状态': ['已生成']
-    }
+    # 根据report_id判断报表类型（简化处理）
+    # 实际应用中应该从数据库获取报表信息
+    if 'monthly' in report_id or report_id.startswith('1'):
+        # 月度考勤报表
+        report_type = 'monthly'
+        filename = f'月度考勤报表_{report_id}.xlsx'
+        sheet_name = '月度考勤报表'
+        
+        # 获取真实的月度考勤数据
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=30)
+        report_data = report_service.get_detailed_report_data(db, start_date, end_date)
+        
+    else:
+        # 异常考勤统计
+        report_type = 'exception'
+        filename = f'异常考勤统计_{report_id}.xlsx'
+        sheet_name = '异常考勤统计'
+        
+        # 获取真实的异常考勤数据
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=30)
+        all_data = report_service.get_detailed_report_data(db, start_date, end_date)
+        # 过滤只保留异常记录
+        report_data = [r for r in all_data if r['status'] in ['迟到', '早退', '缺勤']]
     
-    df = pd.DataFrame(data)
+    if not report_data:
+        # 如果没有数据，创建空的示例数据
+        report_data = [{
+            'employee_name': '暂无数据',
+            'clock_in_time': datetime.now(),
+            'clock_out_time': datetime.now(),
+            'work_duration': '0:00:00',
+            'overtime': '0:00:00',
+            'status': '正常',
+            'shift_name': '标准班次'
+        }]
+    
+    # 转换为DataFrame
+    df_data = []
+    for record in report_data:
+        df_data.append({
+            '员工姓名': record['employee_name'],
+            '上班时间': record['clock_in_time'].strftime('%Y-%m-%d %H:%M:%S') if record['clock_in_time'] else '',
+            '下班时间': record['clock_out_time'].strftime('%Y-%m-%d %H:%M:%S') if record['clock_out_time'] else '',
+            '工作时长': str(record['work_duration']),
+            '加班时长': str(record['overtime']),
+            '考勤状态': record['status'],
+            '班次名称': record['shift_name']
+        })
+    
+    df = pd.DataFrame(df_data)
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='报表数据')
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
     output.seek(0)
+    
+    # 对中文文件名进行URL编码
+    encoded_filename = quote(filename.encode('utf-8'))
     
     return StreamingResponse(
         BytesIO(output.read()), 
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-        headers={"Content-Disposition": f"attachment; filename=report_{report_id}.xlsx"}
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
     )
 
 @router.get("/view/{report_id}")
 def view_report(report_id: str, db: Session = Depends(get_db)):
     """查看报表详情"""
-    # 返回报表的详细信息
+    from datetime import datetime, timedelta
+    
+    # 根据report_id判断报表类型
+    if 'monthly' in report_id or report_id.startswith('1'):
+        # 月度考勤报表
+        report_type = 'monthly'
+        report_name = '月度考勤报表'
+        
+        # 获取真实的月度考勤数据统计
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=30)
+        report_data = report_service.get_detailed_report_data(db, start_date, end_date)
+        
+        records_count = len(report_data)
+        summary = f"月度考勤报表包含 {records_count} 条考勤记录，涵盖所有员工的考勤情况"
+        
+    else:
+        # 异常考勤统计
+        report_type = 'exception'
+        report_name = '异常考勤统计'
+        
+        # 获取真实的异常考勤数据统计
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=30)
+        all_data = report_service.get_detailed_report_data(db, start_date, end_date)
+        report_data = [r for r in all_data if r['status'] in ['迟到', '早退', '缺勤']]
+        
+        records_count = len(report_data)
+        total_records = len(all_data)
+        summary = f"异常考勤统计发现 {records_count} 条异常记录，占总记录数 {total_records} 的 {(records_count/total_records*100):.1f}%" if total_records > 0 else "异常考勤统计暂无异常记录"
+    
     return {
         "success": True,
         "report_id": report_id,
         "generated_at": datetime.now().isoformat(),
         "status": "completed",
         "data": {
-            "summary": f"报表 {report_id} 的详细信息",
-            "records_count": 100,
-            "date_range": "2025-01-01 至 2025-01-31"
+            "summary": summary,
+            "records_count": records_count,
+            "date_range": f"{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}",
+            "report_type": report_type,
+            "report_name": report_name
         }
     }

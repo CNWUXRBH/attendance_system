@@ -40,9 +40,13 @@ class AttendanceRecordResponse(BaseModel):
     record_id: int
     date: str
     name: str
+    employee_name: str  # 前端Dashboard期望的字段
+    employee_no: str    # 前端Dashboard期望的字段
     department: str
     checkIn: Optional[str] = None
     checkOut: Optional[str] = None
+    clock_in_time: Optional[datetime] = None   # 前端Dashboard期望的原始时间字段
+    clock_out_time: Optional[datetime] = None  # 前端Dashboard期望的原始时间字段
     status: str
     employee_id: int
     clock_type: Optional[str] = None

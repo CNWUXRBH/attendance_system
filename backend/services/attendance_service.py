@@ -74,9 +74,13 @@ def get_attendance_records(db: Session, skip: int = 0, limit: int = 100, employe
     if employee_id:
         query = query.filter(attendance_record_model.AttendanceRecord.employee_id == employee_id)
     if start_date:
-        query = query.filter(attendance_record_model.AttendanceRecord.clock_in_time >= start_date)
+        # 使用日期范围过滤，确保包含整天的记录
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        query = query.filter(attendance_record_model.AttendanceRecord.clock_in_time >= start_datetime)
     if end_date:
-        query = query.filter(attendance_record_model.AttendanceRecord.clock_in_time <= end_date)
+        # 使用日期范围过滤，确保包含整天的记录
+        end_datetime = datetime.combine(end_date, datetime.max.time())
+        query = query.filter(attendance_record_model.AttendanceRecord.clock_in_time <= end_datetime)
     records = query.offset(skip).limit(limit).all()
     return records
 
@@ -84,6 +88,7 @@ def get_attendance_records_formatted(db: Session, skip: int = 0, limit: int = 10
     query = db.query(
         attendance_record_model.AttendanceRecord,
         employee_model.Employee.name,
+        employee_model.Employee.employee_no,
         employee_model.Employee.position
     ).join(
         employee_model.Employee,
@@ -95,14 +100,18 @@ def get_attendance_records_formatted(db: Session, skip: int = 0, limit: int = 10
     if name:
         query = query.filter(employee_model.Employee.name.like(f"%{name}%"))
     if start_date:
-        query = query.filter(attendance_record_model.AttendanceRecord.clock_in_time >= start_date)
+        # 使用日期范围过滤，确保包含整天的记录
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        query = query.filter(attendance_record_model.AttendanceRecord.clock_in_time >= start_datetime)
     if end_date:
-        query = query.filter(attendance_record_model.AttendanceRecord.clock_in_time <= end_date)
+        # 使用日期范围过滤，确保包含整天的记录
+        end_datetime = datetime.combine(end_date, datetime.max.time())
+        query = query.filter(attendance_record_model.AttendanceRecord.clock_in_time <= end_datetime)
     
     results = query.offset(skip).limit(limit).all()
     
     formatted_records = []
-    for record, employee_name, position in results:
+    for record, employee_name, employee_no, position in results:
         # 计算工作时长和加班时长
         work_hours, overtime_hours = calculate_work_hours(record.clock_in_time, record.clock_out_time)
         
@@ -110,9 +119,13 @@ def get_attendance_records_formatted(db: Session, skip: int = 0, limit: int = 10
             'record_id': record.record_id,
             'date': record.clock_in_time.strftime('%Y-%m-%d') if record.clock_in_time else '',
             'name': employee_name,
+            'employee_name': employee_name,  # 前端Dashboard期望的字段名
+            'employee_no': employee_no,      # 前端Dashboard期望的字段名
             'department': position,
             'checkIn': record.clock_in_time.strftime('%H:%M:%S') if record.clock_in_time else None,
             'checkOut': record.clock_out_time.strftime('%H:%M:%S') if record.clock_out_time else None,
+            'clock_in_time': record.clock_in_time,   # 前端Dashboard期望的原始时间字段
+            'clock_out_time': record.clock_out_time, # 前端Dashboard期望的原始时间字段
             'status': record.status or '正常',
             'employee_id': record.employee_id,
             'clock_type': record.clock_type,

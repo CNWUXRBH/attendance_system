@@ -125,14 +125,7 @@ def get_reports(db: Session):
                 "status": "completed",
                 "abnormal_count": abnormal_records
             },
-            {
-                "id": 3,
-                "name": "员工出勤率统计",
-                "type": "attendance_rate",
-                "created_at": latest_time,
-                "status": "completed",
-                "attendance_rate": round((total_records / max(total_employees * 30, 1)) * 100, 2) if total_employees > 0 else 0
-            }
+
         ]
     }
 
@@ -180,21 +173,7 @@ def generate_report(db: Session, report_type: str, start_date: str = None, end_d
         # 过滤只保留异常记录
         report_data = [r for r in report_data if r['status'] in ['迟到', '早退', '缺勤']]
         
-    elif report_type == "attendance_rate":
-        # 获取出勤率数据
-        total_employees = db.query(models_e.Employee).count()
-        total_records = db.query(models_ar.AttendanceRecord).filter(
-            func.date(models_ar.AttendanceRecord.clock_in_time) >= start_dt,
-            func.date(models_ar.AttendanceRecord.clock_in_time) <= end_dt
-        ).count()
-        
-        records = total_records
-        report_data = {
-            "total_employees": total_employees,
-            "total_records": total_records,
-            "attendance_rate": round((total_records / max(total_employees * (end_dt - start_dt).days, 1)) * 100, 2) if total_employees > 0 else 0
-        }
-        
+
     else:
         return {
             "success": False,
@@ -213,5 +192,5 @@ def generate_report(db: Session, report_type: str, start_date: str = None, end_d
         "download_url": f"/api/reports/download/{report_id}",
         "data_count": records,
         "date_range": f"{start_date} 至 {end_date}",
-        "report_data": report_data if report_type != "attendance_rate" else report_data
+        "report_data": report_data
     }
